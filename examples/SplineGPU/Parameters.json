@@ -1,0 +1,171 @@
+{
+    "Cytosol": {
+        "Buffers": {
+            "Troponin": {
+                "Ions": {
+                    "Calcium": {
+                        "D": 0,
+                        "koff": 0.02,
+                        "kon": 0.039
+                    }
+                },
+                "Total Concentration": 70
+            }
+        },
+        "CUDA": {
+            "BLOCK X": 256,
+            "BLOCK Y": 1
+        },
+        "Leak mult": 2e-06,
+        "SERCA": {
+            "Calcium": {
+                "Jmax": 0.2,
+                "Kup": 0.2
+            }
+        },
+        "Type": "Pool",
+        "dr": 10,
+        "r": 10000
+    },
+    "Description": "Parallel CPU+GPU computations using two-state model with rates described by spline constructed from Iaparov et al. 2022 data at stronger Mg2+ binding parameters",
+    "Dyad": {
+        "Buffers": {
+            "ATP": {
+                "Ions": {
+                    "Calcium": {
+                        "D": 140000.0,
+                        "koff": 45,
+                        "kon": 0.225
+                    },
+                    "Magnesium": {
+                        "D": 140000.0,
+                        "koff": 10.875,
+                        "kon": 0.125
+                    }
+                },
+                "Total Concentration": 5000
+            },
+            "Calmodulin": {
+                "Ions": {
+                    "Calcium": {
+                        "D": 25000.0,
+                        "koff": 0.238,
+                        "kon": 0.023
+                    }
+                },
+                "Total Concentration": 24
+            },
+            "Fluo-4": {
+                "Ions": {
+                    "Calcium": {
+                        "D": 42000.0,
+                        "koff": 0.1,
+                        "kon": 0.11
+                    }
+                },
+                "Total Concentration": 60
+            }
+        },
+        "CUDA": {
+            "BLOCK X": 8,
+            "BLOCK Y": 8,
+            "BLOCK Z": 8
+        },
+        "Channels": {
+            "RyR": {
+                "Conductance": {
+                    "Calcium": 1366.8,
+                    "Magnesium": 0
+                },
+                "Coordinates": "Jayasinghe.txt",
+                "Kclose filename": "kclose_data_v2.txt",
+                "Kopen filename": "kopen_data_v2.txt",
+                "Model": "TwoStateSpline",
+                "Parameters": {}
+            }
+        },
+        "Ions": {
+            "Calcium": {
+                "Concentration": 0.1,
+                "D": 250000.0,
+                "Extracell": 1000
+            },
+            "Magnesium": {
+                "Concentration": 1000,
+                "D": 160000.0,
+                "Extracell": 1000
+            }
+        },
+        "Radius": 1000,
+        "Sarcolemma": {
+            "Calcium": {
+                "K1": 1100,
+                "K2": 13,
+                "N1": 0,
+                "N2": 10666.65
+            }
+        },
+        "Start": "Equilibrium",
+        "Type": "Reaction-DiffusionMP2D",
+        "dx": 10,
+        "dy": 10,
+        "dz": 5,
+        "x": 300,
+        "y": 400,
+        "z": 15
+    },
+    "Iterations for Cytosol": 5000,
+    "Iterations for Dyad": 5000,
+    "Iterations for IonChannels": 500,
+    "Iterations for IonsNearChannels": 500,
+    "Iterations for SR": 500,
+    "Max Time, ms": 100,
+    "Name": "SplineCREFinv2",
+    "NumCores": 25,
+    "NumScenarios": 200,
+    "NumThreads": 100,
+    "Outputs": [
+        "Calcium",
+        "Magnesium",
+        "ATP",
+        "Calmodulin",
+        "Fluo-4",
+        "Troponin",
+        "RyR"
+    ],
+    "Solver": "ParallelHybridSolver",
+    "Time output": 100000,
+    "WriteData": 1,
+    "dt, ns": 50,
+    "jSR": {
+        "Constant": false,
+        "Ions": {
+            "Calcium": {
+                "Binding sites of CQ": 15,
+                "Concentration": 1000,
+                "K CQ (uM)": 600,
+                "T refill (ms)": 15
+            },
+            "Magnesium": {
+                "Binding sites of CQ": 0,
+                "Concentration": 1000,
+                "K CQ (uM)": 0,
+                "T refill (ms)": 1
+            }
+        },
+        "Total CQ (uM)": 800,
+        "Type": "Pool",
+        "V jSR (nm3)": 10000000.0
+    },
+    "nSR": {
+        "Ions": {
+            "Calcium": {
+                "Concentration (uM)": 1000
+            },
+            "Magnesium": {
+                "Concentration (uM)": 1000
+            }
+        },
+        "Type": "ConstPool"
+    }
+}
