@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{E5935C60-C89E-4AFA-B560-B092FC833C6F}</ProjectGuid>
+    <RootNamespace>CalSim</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>CaSim</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.props" />
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>H5_BUILT_AS_DYNAMIC_LIB;_HAS_STD_BYTE=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>C:\Program Files\HDF_Group\HDF5\1.14.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>hdf5.lib;hdf5_cpp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\HDF_Group\HDF5\1.14.0\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <Include>./;../../common/inc</Include>
+      <CodeGeneration>compute_61,sm_61</CodeGeneration>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
+    <CudaLink>
+      <AdditionalOptions>-std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
+    </CudaLink>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>H5_BUILT_AS_DYNAMIC_LIB;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <OpenMPSupport>true</OpenMPSupport>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\HDF_Group\HDF5\1.14.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\HDF_Group\HDF5\1.14.0\lib;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>hdf5.lib;hdf5_cpp.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+    </Link>
+    <CudaCompile>
+      <CodeGeneration>compute_75,sm_75</CodeGeneration>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="CalciumReleaseSite.cpp" />
+    <ClCompile Include="CaSolver.cpp" />
+    <ClCompile Include="CytosolPool.cpp" />
+    <ClCompile Include="CytosolRDCPU.cpp" />
+    <ClCompile Include="CytosolSeries.cpp" />
+    <ClCompile Include="DyadChannels.cpp" />
+    <ClCompile Include="DyadRD2DCPU.cpp" />
+    <ClCompile Include="DyadRDCPU.cpp" />
+    <ClCompile Include="EmptyCytosol.cpp" />
+    <ClCompile Include="IndChannelCREAnalyzer.cpp" />
+    <ClCompile Include="IonChannel.cpp" />
+    <ClCompile Include="TwoStateSplineModel.cpp" />
+    <ClCompile Include="NSRConstPool.cpp" />
+    <ClCompile Include="NSRSeries.cpp" />
+    <ClCompile Include="ParallelHybridSolver.cpp" />
+    <ClCompile Include="ParallelRng.cpp" />
+    <ClCompile Include="PassiveIonChannel.cpp" />
+    <ClCompile Include="QMatrixModel.cpp" />
+    <ClCompile Include="rngstream.cpp" />
+    <ClCompile Include="SheepCannell.cpp" />
+    <ClCompile Include="SingleSiteMWC.cpp" />
+    <ClCompile Include="SingleSiteMWCwCaL.cpp" />
+    <ClCompile Include="SRPool.cpp" />
+    <ClCompile Include="SRSeries.cpp" />
+    <ClCompile Include="StationaryDiffusionModel.cpp" />
+    <ClCompile Include="ParallelSolver.cpp" />
+    <ClCompile Include="LinearNaraghiNeher.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Point.cpp" />
+    <ClCompile Include="QuasyStationaryReleaseSite.cpp" />
+    <ClCompile Include="StepCurrentIonChannel.cpp" />
+    <ClCompile Include="StepCurrentModel.cpp" />
+    <ClCompile Include="TwoStateModel.cpp" />
+    <ClCompile Include="TwoStatePoModel.cpp" />
+    <ClCompile Include="TwoStateMWC.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CalciumReleaseSite.h" />
+    <ClInclude Include="CaSolver.h" />
+    <ClInclude Include="CytosolPool.h" />
+    <ClInclude Include="CytosolRD.h" />
+    <ClInclude Include="CytosolRDCPU.h" />
+    <ClInclude Include="CytosolRDMP.h" />
+    <ClInclude Include="CytosolSeries.h" />
+    <ClInclude Include="DyadChannels.h" />
+    <ClInclude Include="DyadRD.h" />
+    <ClInclude Include="DyadRD2DCPU.h" />
+    <ClInclude Include="DyadRD2DwCytosol.h" />
+    <ClInclude Include="DyadRDMP2D.h" />
+    <ClInclude Include="DyadRDCPU.h" />
+    <ClInclude Include="DyadRDMP.h" />
+    <ClInclude Include="DyadSeries.h" />
+    <ClInclude Include="EmptyCytosol.h" />
+    <ClInclude Include="IndChannelCREAnalyzer.h" />
+    <ClInclude Include="IonChannel.h" />
+    <ClInclude Include="TwoStateSplineModel.h" />
+    <ClInclude Include="NSRConstPool.h" />
+    <ClInclude Include="NSRSeries.h" />
+    <ClInclude Include="ParallelHybridSolver.h" />
+    <ClInclude Include="ParallelRng.h" />
+    <ClInclude Include="PassiveIonChannel.h" />
+    <ClInclude Include="QMatrixModel.h" />
+    <ClInclude Include="rngstream.h" />
+    <ClInclude Include="SheepCannell.h" />
+    <ClInclude Include="SingleSiteMWC.h" />
+    <ClInclude Include="SingleSiteMWCwCaL.h" />
+    <ClInclude Include="spline.h" />
+    <ClInclude Include="SRPool.h" />
+    <ClInclude Include="SRSeries.h" />
+    <ClInclude Include="StationaryDiffusionModel.h" />
+    <ClInclude Include="ParallelSolver.h" />
+    <ClInclude Include="KineticModel.h" />
+    <ClInclude Include="LinearNaraghiNeher.h" />
+    <ClInclude Include="Point.h" />
+    <ClInclude Include="QuasyStationaryReleaseSite.h" />
+    <ClInclude Include="StepCurrentIonChannel.h" />
+    <ClInclude Include="StepCurrentModel.h" />
+    <ClInclude Include="Structures.h" />
+    <ClInclude Include="TwoStateModel.h" />
+    <ClInclude Include="TwoStateMWC.h" />
+    <ClInclude Include="TwoStatePoModel.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="CytosolRDMP.cu" />
+    <CudaCompile Include="DyadRD2DwCytosol.cu" />
+    <CudaCompile Include="DyadRDMP2D.cu" />
+    <CudaCompile Include="DyadRDMP.cu" />
+    <CudaCompile Include="CytosolRD.cu" />
+    <CudaCompile Include="DyadRD.cu" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.targets" />
+  </ImportGroup>
+</Project>
