@@ -143,7 +143,7 @@ void CytosolPool::Initialize(nlohmann::json& j, nlohmann::json& j_dyad, int nthr
 		else
 			SR_uptakes_ion.push_back(0);
 	}
-	
+	V = j_dyad["Voltage"];
 	dt_is_set = false;
 	ions = new double[n_threads * n_ions];
 	zero_vector.resize((n_ions_dyad + idx_buff_dyad) * n_threads);
@@ -314,9 +314,10 @@ void CytosolPool::Reset() {
 	}
 }
 
-void CytosolPool::GetIonsandBuffers(double*& ions_boundary_out, double*& buffers_boundary_out) {
+void CytosolPool::GetIonsBuffersandV(double*& ions_boundary_out, double*& buffers_boundary_out,double& Vol) {
 	ions_boundary_out = ions;
 	buffers_boundary_out = buffers_boundary;
+	Vol = V;
 }
 
 bool CytosolPool::UsesGPU() {

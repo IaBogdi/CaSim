@@ -78,9 +78,6 @@
     <ClCompile Include="DyadChannels.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="DyadRDCPU.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="ParallelHybridSolver.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
@@ -91,12 +88,6 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="StepCurrentModel.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="CytosolRDCPU.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="EmptyCytosol.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="CytosolPool.cpp">
@@ -118,6 +109,9 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="DyadRD2DCPU.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="DyadRDCPU.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
@@ -173,12 +167,6 @@
     <ClInclude Include="SRPool.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="DyadRD.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="CytosolRD.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="IonChannel.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
@@ -197,9 +185,6 @@
     <ClInclude Include="DyadChannels.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="DyadRDCPU.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="QMatrixModel.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
@@ -209,19 +194,7 @@
     <ClInclude Include="StepCurrentModel.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="CytosolRDCPU.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="DyadRDMP.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="CytosolRDMP.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="DyadRDMP2D.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="DyadRD2DwCytosol.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="EmptyCytosol.h">
@@ -254,24 +227,18 @@
     <ClInclude Include="DyadRD2DCPU.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="DyadRDCPU.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="DyadRDMP.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="DyadRD.cu">
-      <Filter>Исходные файлы</Filter>
-    </CudaCompile>
-    <CudaCompile Include="CytosolRD.cu">
-      <Filter>Исходные файлы</Filter>
-    </CudaCompile>
-    <CudaCompile Include="DyadRDMP.cu">
-      <Filter>Исходные файлы</Filter>
-    </CudaCompile>
-    <CudaCompile Include="CytosolRDMP.cu">
-      <Filter>Исходные файлы</Filter>
-    </CudaCompile>
     <CudaCompile Include="DyadRDMP2D.cu">
       <Filter>Исходные файлы</Filter>
     </CudaCompile>
-    <CudaCompile Include="DyadRD2DwCytosol.cu">
+    <CudaCompile Include="DyadRDMP.cu">
       <Filter>Исходные файлы</Filter>
     </CudaCompile>
   </ItemGroup>

@@ -25,10 +25,10 @@ TwoStateSplineModel::TwoStateSplineModel(std::string& s1, std::string &s2) {
 	_kclose = std::make_unique<tk::spline>(X, Y);
 }
 
-double TwoStateSplineModel::_KClose(std::vector<double>& ions) {
-	return (*_kclose)(ions[0]);
+double TwoStateSplineModel::_KClose(const std::unordered_map<std::string, double>& ions) {
+	return (*_kclose)(ions.at("Calcium"));
 }
 
-double TwoStateSplineModel::_KOpen(std::vector<double>& ions) {
-	return (*_kopen)(ions[0]);
+double TwoStateSplineModel::_KOpen(const std::unordered_map<std::string, double>& ions) {
+	return (*_kopen)(ions.at("Calcium"));
 }

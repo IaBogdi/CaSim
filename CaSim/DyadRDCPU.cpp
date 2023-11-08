@@ -1,15 +1,11 @@
 #include "DyadRDCPU.h"
 
-#include <algorithm> //find
-#include <utility>
-
 inline double DyadRDCPU::d2YdX2(double Yl, double Yc, double Yr, double dX)
 {
 	return (Yr - 2 * Yc + Yl) / (dX * dX);
 }
 
-DyadRDCPU::DyadRDCPU(nlohmann::json& j, int nthreads) {
-	channels = std::make_unique<DyadChannels>(j, nthreads);
+DyadRDCPU::DyadRDCPU(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	dx = j["dx"];
 	dy = j["dy"];
 	dz = j["dz"];
@@ -17,21 +13,19 @@ DyadRDCPU::DyadRDCPU(nlohmann::json& j, int nthreads) {
 	y = j["y"];
 	z = j["z"];
 	R = j["Radius"];
+	V = j["Voltage"];
 	n_threads = nthreads;
 	nx = x / dx + 1;
 	ny = y / dy + 1;
 	nz = z / dz + 1;
-	for (int i = 0; i < nz; ++i) {
-		if (i == 0 || i == nz - 1)
-			mult_z.push_back(0.5);
-		else
-			mult_z.push_back(1.0);
-	}
 	dyad_dims.resize(5);
-	dyad_dims[1] = nx;
-	dyad_dims[2] = ny;
-	dyad_dims[3] = nz;
-	dyad_dims[4] = n_threads;
+	dyad_dims[1] = n_threads;
+	dyad_dims[2] = nx;
+	dyad_dims[3] = ny;
+	dyad_dims[4] = nz;
+	mult_z.resize(nz);
+	for (int i = 0; i < nz; ++i)
+		mult_z[i] = (i > 0 || i < nz - 1) ? 1 : 0.5;
 	sx = dy * dz / dx;
 	sy = dx * dz / dy;
 	n_elements_thread = nx * ny * nz;
@@ -47,32 +41,6 @@ DyadRDCPU::DyadRDCPU(nlohmann::json& j, int nthreads) {
 		D_ions.push_back(pars_ion["D"]);
 	}
 	total_sr_current.resize(n_ions * n_threads);
-	//Channels
-	sl_size = channels->GetNSLIonChannels();
-	sr_size = channels->GetNSRIonChannels();
-	n_channels = sl_size + sr_size;
-	x_idx = new int[n_channels];
-	y_idx = new int[n_channels];
-	z_idx = new int[n_channels];
-	for (int j = 0; j < sr_size; ++j) {
-		auto p = channels->GetSRIonChannel(0, j)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
-		x_idx[j] = p[0];
-		y_idx[j] = p[1];
-		z_idx[j] = p[2];
-	}
-	for (int j = sr_size; j < n_channels; ++j) {
-		auto p = channels->GetSLIonChannel(0, j - sr_size)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
-		x_idx[j] = p[0];
-		y_idx[j] = p[1];
-		z_idx[j] = p[2];
-	}
-	n_elements_near_channels = n_ions * n_channels * n_threads;
-	channels_ions_dims.resize(3);
-	channels_ions_dims[1] = n_channels;
-	channels_ions_dims[2] = n_threads;
-	channels_dims.resize(3);
-	channels_dims[1] = n_channels;
-	channels_dims[2] = n_threads;
 	//Buffers
 	for (auto const& el : j["Buffers"].items()) {
 		auto pars_buff = el.value();
@@ -145,6 +113,33 @@ DyadRDCPU::DyadRDCPU(nlohmann::json& j, int nthreads) {
 		else
 			SL_binds_ion.push_back(0);
 	}
+	//Channels
+	channels = std::make_unique<DyadChannels>(j, j_jsr, nthreads, ions_data, buffers_data, V);
+	sl_size = channels->GetNSLIonChannels();
+	sr_size = channels->GetNSRIonChannels();
+	n_channels = sl_size + sr_size;
+	x_idx = new int[n_channels];
+	y_idx = new int[n_channels];
+	z_idx = new int[n_channels];
+	for (int j = 0; j < sr_size; ++j) {
+		auto p = channels->GetSRIonChannel(0, j)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
+		x_idx[j] = p[0];
+		y_idx[j] = p[1];
+		z_idx[j] = p[2];
+	}
+	for (int j = sr_size; j < n_channels; ++j) {
+		auto p = channels->GetSLIonChannel(0, j - sr_size)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
+		x_idx[j] = p[0];
+		y_idx[j] = p[1];
+		z_idx[j] = p[2];
+	}
+	n_elements_near_channels = (n_ions + n_buffers) * n_channels * n_threads;
+	channels_ions_dims.resize(3);
+	channels_ions_dims[1] = n_threads;
+	channels_ions_dims[2] = n_channels;
+	channels_dims.resize(3);
+	channels_dims[1] = n_threads;
+	channels_dims[2] = n_channels;
 	//calculate multiplier for gradient
 	pointers_are_set = false;
 	dt_is_set = false;
@@ -156,13 +151,13 @@ DyadRDCPU::DyadRDCPU(nlohmann::json& j, int nthreads) {
 	ions.resize(n_elements * n_ions);
 	currents = new double[n_elements * n_ions];
 	buffers = new double[n_elements * idx_buf];
-	evo_ions = new double[n_elements* n_ions];
+	evo_ions = new double[n_elements * n_ions];
 	evo_buffers = new double[n_elements * idx_buf];
-	init_ions = new double[n_ions]; 
+	init_ions = new double[n_ions];
 	for (int i = 0; i < ions_data.size(); ++i)
 		init_ions[i] = ions_data[i]->Cb;
 	buf_free = new double[n_elements * n_buf_unique];
-	ions_near_channels.resize(n_channels* n_threads* n_ions);
+	ions_near_channels.resize(n_channels * n_threads * (n_ions + n_buffers + n_buf_unique));
 }
 
 std::vector<double> DyadRDCPU::GaussElimination(std::vector<std::vector<double> >& a) {
@@ -198,7 +193,7 @@ std::vector<double> DyadRDCPU::GaussElimination(std::vector<std::vector<double> 
 }
 
 double DyadRDCPU::GetElementVolume() {
-	return dx * dy * dz;
+	return 0.5 * dx * dy * dz; //bc it is used for calculation of jSR
 }
 
 int DyadRDCPU::GetNumSRChannels() {
@@ -237,8 +232,11 @@ bool DyadRDCPU::UsesGPU() {
 	return false;
 }
 
-int DyadRDCPU::GetNIons() {
-	return n_ions;
+std::vector<std::string> DyadRDCPU::GetListofIons() {
+	std::vector<std::string> out;
+	for (auto& ion : ions_data)
+		out.push_back(ion->name);
+	return out;
 }
 
 std::vector<double> DyadRDCPU::GetTotalSRCurrent() {
@@ -250,6 +248,7 @@ void DyadRDCPU::InitOpening(int thread, int channel) {
 }
 
 void DyadRDCPU::_SetCurrents(const std::vector<double>& ions_jsr, const std::vector<double>& ions_extracell) {
+	jsr_ions = &ions_jsr;
 	int idx, idx_jsr, idx_extra;
 	for (int i = 0; i < n_threads; ++i) {
 		total_sr_current[i] = 0;
@@ -257,17 +256,15 @@ void DyadRDCPU::_SetCurrents(const std::vector<double>& ions_jsr, const std::vec
 			for (int k = 0; k < n_ions; ++k) {
 				idx = j + n_channels * (i + k * n_threads);
 				idx_jsr = j + sr_size * (i + k * n_threads);
-				ions_near_channels[idx] = _GetIonNearChannel(j, i, k);
-				currents[_GetChannelIndex(j,i,k)] = channels->GetSRIonChannel(i, j)->Flux(ions_jsr[idx_jsr], ions_near_channels[idx], k);
-				total_sr_current[i + k * n_threads] += currents[idx];
+				currents[_GetChannelIndex(j, i, k)] = channels->GetSRIonChannel(i, j)->Flux(ions_jsr[idx_jsr], _GetIonNearChannel(j, i, k), k);
+				total_sr_current[i + k * n_threads] += currents[_GetChannelIndex(j, i, k)];
 			}
 		}
 		for (int j = sr_size; j < n_channels; ++j) {
 			for (int k = 0; k < n_ions; ++k) {
 				idx = j + n_channels * (i + k * n_threads);
-				ions_near_channels[idx] = _GetIonNearChannel(j, i, k);
 				idx_extra = j - sr_size + sl_size * (i + k * n_threads);
-				currents[_GetChannelIndex(j, i, k)] = channels->GetSLIonChannel(i, j - sr_size)->Flux(ions_extracell[idx_extra], ions_near_channels[idx], k);
+				currents[_GetChannelIndex(j, i, k)] = channels->GetSLIonChannel(i, j - sr_size)->Flux(ions_extracell[idx_extra], _GetIonNearChannel(j, i, k), k);
 			}
 		}
 	}
@@ -278,24 +275,32 @@ void DyadRDCPU::GetEffluxes(double*& currents_out) {
 }
 
 int DyadRDCPU::_Index(int idx, int idy, int idz, int idw) {
-	return idx + nx * (idy + ny * (idz + nz * idw));
+	return idz + nz * (idy + ny * (idx + nx * idw));
+}
+
+inline int DyadRDCPU::_GetChannelIndex(int idx_channel, int idx_thread, int idx_ion) {
+	return _Index(x_idx[idx_channel], y_idx[idx_channel], z_idx[idx_channel], idx_thread) + idx_ion * n_elements;
+}
+
+inline double DyadRDCPU::_GetIonNearChannel(int idx_channel, int idx_thread, int idx_ion) {
+	int id = _GetChannelIndex(idx_channel, idx_thread, idx_ion);
+	return ions[id];
 }
 
 void DyadRDCPU::_SetBoundaries() {
-	int idx = 0;
-	int idy, idz, idx_batch, idfull, idx2;
-	for (idx = 0; idx < nx; idx+= nx - 1)
+	int idx, idy, idz, idx_batch, idfull, idx2;
+	for (idx = 0; idx < nx; idx += nx - 1)
 		for (idy = 0; idy < ny; ++idy)
 			for (idz = 0; idz < nz; ++idz)
 				for (idx_batch = 0; idx_batch < n_threads; ++idx_batch) {
 					idfull = _Index(idx, idy, idz, idx_batch);
 					for (int j = 0; j < n_ions; ++j) {
 						idx2 = idfull + j * n_elements;
-						ions[idx2] = ions_from_cytosol[j + idx_batch * n_ions];
+						ions[idx2] = ions_from_cytosol[idx_batch + j * n_threads];
 					}
 					for (int i = 0; i < n_buffers; ++i) {
 						idx2 = idfull + i * n_elements;
-						buffers[idx2] = buffers_from_cytosol[i + idx_batch * n_buffers];
+						buffers[idx2] = buffers_from_cytosol[idx_batch + i * n_threads];
 					}
 				}
 	for (idy = 0; idy < ny; idy += ny - 1)
@@ -305,11 +310,11 @@ void DyadRDCPU::_SetBoundaries() {
 					idfull = _Index(idx, idy, idz, idx_batch);
 					for (int j = 0; j < n_ions; ++j) {
 						idx2 = idfull + j * n_elements;
-						ions[idx2] = ions_from_cytosol[j + idx_batch * n_ions];
+						ions[idx2] = ions_from_cytosol[idx_batch + j * n_threads];
 					}
 					for (int i = 0; i < n_buffers; ++i) {
 						idx2 = idfull + i * n_elements;
-						buffers[idx2] = buffers_from_cytosol[i + idx_batch * n_buffers];
+						buffers[idx2] = buffers_from_cytosol[idx_batch + i * n_threads];
 					}
 				}
 }
@@ -329,117 +334,97 @@ void DyadRDCPU::_GetGradients() {
 		for (n_batch = 0; n_batch < n_threads; ++n_batch) {
 			gradients[i + n_ions + n_ions_and_buffers * n_batch] = 0;
 		}
-	for (idx = 0; idx < nx; idx+=nx - 1)
+	for (idx = 0; idx < nx; idx += nx - 1)
 		for (idy = 1; idy < ny - 1; ++idy)
-			for (idz = 0; idz < nz; ++idz)
+			for (idz = 0; idz < nz - 1; ++idz)
 				for (n_batch = 0; n_batch < n_threads; ++n_batch) {
 					idfull = idx == 0 ? _Index(idx + 1, idy, idz, n_batch) : _Index(idx - 1, idy, idz, n_batch);
 					idfull2 = _Index(idx, idy, idz, n_batch);
 					idfull3 = idx == 0 ? _Index(idx + 2, idy, idz, n_batch) : _Index(idx - 2, idy, idz, n_batch);
 					for (int j = 0; j < n_ions; ++j) {
 						str = j * n_elements;
-						gradients[j + n_ions_and_buffers * n_batch] += mult_z[idz] * D_ions[j] * grad_mult * sx * (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
+						gradients[j + n_ions_and_buffers * n_batch] += D_ions[j] * grad_mult * sx * mult_z[idz] * (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
 					}
 					for (int i = 0; i < n_buffers; ++i) {
 						str = i * n_elements;
-						gradients[i + n_ions + n_ions_and_buffers * n_batch] += mult_z[idz] * D_buf[i] * grad_mult * sx * (2 * buffers[idfull + str] - 1.5 * buffers[idfull2 + str] - 0.5 * buffers[idfull3 + str]);
+						gradients[i + n_ions + n_ions_and_buffers * n_batch] += D_buf[i] * grad_mult * sx * mult_z[idz] * (2 * buffers[idfull + str] - 1.5 * buffers[idfull2 + str] - 0.5 * buffers[idfull3 + str]);
 					}
 				}
 	for (idy = 0; idy < ny; idy += ny - 1)
 		for (idx = 0; idx < nx; ++idx)
-			for (idz = 0; idz < nz; ++idz)
+			for (idz = 0; idz < nz - 1; ++idz)
 				for (n_batch = 0; n_batch < n_threads; ++n_batch) {
 					idfull = idy == 0 ? _Index(idx, idy + 1, idz, n_batch) : _Index(idx, idy - 1, idz, n_batch);
 					idfull2 = _Index(idx, idy, idz, n_batch);
 					idfull3 = idy == 0 ? _Index(idx, idy + 2, idz, n_batch) : _Index(idx, idy - 2, idz, n_batch);
 					for (int j = 0; j < n_ions; ++j) {
 						str = j * n_elements;
-						gradients[j + n_ions_and_buffers * n_batch] += mult_z[idz] *  D_ions[j] * grad_mult * sy * (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
+						gradients[j + n_ions_and_buffers * n_batch] += D_ions[j] * grad_mult * sy * mult_z[idz] * (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
 					}
 					for (int i = 0; i < n_buffers; ++i) {
 						str = i * n_elements;
-						gradients[i + n_ions + n_ions_and_buffers * n_batch] += mult_z[idz] * D_buf[i] * grad_mult * sy * (2 * buffers[idfull + str] - 1.5 * buffers[idfull2 + str] - 0.5 * buffers[idfull3 + str]);
+						gradients[i + n_ions + n_ions_and_buffers * n_batch] += D_buf[i] * grad_mult * sy * mult_z[idz] * (2 * buffers[idfull + str] - 1.5 * buffers[idfull2 + str] - 0.5 * buffers[idfull3 + str]);
 					}
 				}
 }
 
-inline int DyadRDCPU::_GetChannelIndex(int idx_channel, int idx_thread, int idx_ion) {
-	return _Index(x_idx[idx_channel], y_idx[idx_channel], z_idx[idx_channel], idx_thread) + idx_ion * n_elements;
+void DyadRDCPU::_SetIonsAndBuffersNearChannels() {
+	int idx, idx_jsr, idx_extra;
+	for (int i = 0; i < n_threads; ++i)
+		for (int j = 0; j < n_channels; ++j) {
+			for (int k = 0; k < n_ions; ++k) {
+				idx = j + n_channels * (i + k * n_threads);
+				ions_near_channels[idx] = _GetIonNearChannel(j, i, k);
+			}
+			for (int k = 0; k < n_buffers; ++k) {
+				idx = j + n_channels * (i + (k + n_ions) * n_threads);
+				ions_near_channels[idx] = buffers[_GetChannelIndex(j, i, k)];
+			}
+			for (int k = 0; k < n_buf_unique; ++k) {
+				idx = j + n_channels * (i + (k + n_ions + n_buffers) * n_threads);
+				ions_near_channels[idx] = buf_free[_GetChannelIndex(j, i, k)];
+			}
+		}
+
+
 }
 
-inline double DyadRDCPU::_GetIonNearChannel(int idx_channel, int idx_thread, int idx_ion) {
-	int id = _GetChannelIndex(idx_channel, idx_thread, idx_ion);
-	return ions[id];
-}
-
-void DyadRDCPU::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& jsr_ions, const std::vector<double>& extracellular_ions) {//add reinit
+void DyadRDCPU::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& jsr_ions, const std::vector<double>& extracellular_ions, double& Vcyt) {
+	V = Vcyt;
 	if (ions_from_cytosol != ions_cytosol || buffers_from_cytosol != buffers_cytosol) {
 		ions_from_cytosol = ions_cytosol;
 		buffers_from_cytosol = buffers_cytosol;
 	}
+	_SetIonsAndBuffersNearChannels();
 	_SetBoundaries();
 	_GetGradients();
 	_SetCurrents(jsr_ions, extracellular_ions);
 }
 
-void DyadRDCPU::_EvolutionOp(int idx, int idy, int idz, int idx_batch, double dt) {
+void DyadRDCPU::_EvolutionOp(int idx, int idy,int idz, int idx_batch, double dt) {
 	int idfull = _Index(idx, idy, idz, idx_batch);
 	int idxl = _Index(idx - 1, idy, idz, idx_batch);
 	int idxr = _Index(idx + 1, idy, idz, idx_batch);
 	int idyl = _Index(idx, idy - 1, idz, idx_batch);
 	int idyr = _Index(idx, idy + 1, idz, idx_batch);
-	int idzl = _Index(idx, idy, idz - 1, idx_batch);
-	int idzr = _Index(idx, idy, idz + 1, idx_batch);
+	int idzl = idz == 0 ? _Index(idx, idy, idz + 1, idx_batch) : _Index(idx, idy, idz - 1, idx_batch);
+	int idzr = idz == nz - 1 ? _Index(idx, idy, idz - 1, idx_batch) : _Index(idx, idy, idz + 1, idx_batch);
 	double val_center;
 	int str, idx2;
 	//diffusion
-	if (idz == 0) {
-		for (int j = 0; j < n_ions; ++j) {
-			str = j * n_elements;
-			val_center = ions[idfull + str];
-			evo_ions[idfull + str] = D_ions[j] * (d2YdX2(ions[idxl + str], val_center, ions[idxr + str], dx) +
-				d2YdX2(ions[idyl + str], val_center, ions[idyr + str], dy) +
-				d2YdX2(ions[idzr + str], val_center, ions[idzr + str], dz));
-		}
-		for (int i = 0; i < n_buffers; ++i) {
-			str = i * n_elements;
-			val_center = buffers[idfull + str];
-			evo_buffers[idfull + str] = D_buf[i] * (d2YdX2(buffers[idxl + str], val_center, buffers[idxr + str], dx) +
-				d2YdX2(buffers[idyl + str], val_center, buffers[idyr + str], dy) +
-				d2YdX2(buffers[idzr + str], val_center, buffers[idzr + str], dz));
-		}
+	for (int j = 0; j < n_ions; ++j) {
+		str = j * n_elements;
+		val_center = ions[idfull + str];
+		evo_ions[idfull + str] = D_ions[j] * (d2YdX2(ions[idxl + str], val_center, ions[idxr + str], dx) +
+			d2YdX2(ions[idyl + str], val_center, ions[idyr + str], dy) + 
+			d2YdX2(ions[idzl + str], val_center, ions[idzr + str], dz));
 	}
-	else if (idz == nz - 1) {
-		for (int j = 0; j < n_ions; ++j) {
-			str = j * n_elements;
-			val_center = ions[idfull + str];
-			evo_ions[idfull + str] = D_ions[j] * (d2YdX2(ions[idxl + str], val_center, ions[idxr + str], dx) +
-				d2YdX2(ions[idyl + str], val_center, ions[idyr + str], dy) +
-				d2YdX2(ions[idzl + str], val_center, ions[idzl + str], dz));
-		}
-		for (int i = 0; i < n_buffers; ++i) {
-			str = i * n_elements;
-			val_center = buffers[idfull + str];
-			evo_buffers[idfull + str] = D_buf[i] * (d2YdX2(buffers[idxl + str], val_center, buffers[idxr + str], dx) +
-				d2YdX2(buffers[idyl + str], val_center, buffers[idyr + str], dy) +
-				d2YdX2(buffers[idzl + str], val_center, buffers[idzl + str], dz));
-		}
-	}
-	else {
-		for (int j = 0; j < n_ions; ++j) {
-			str = j * n_elements;
-			val_center = ions[idfull + str];
-			evo_ions[idfull + str] = D_ions[j] * (d2YdX2(ions[idxl + str], val_center, ions[idxr + str], dx) +
-				d2YdX2(ions[idyl + str], val_center, ions[idyr + str], dy) +
-				d2YdX2(ions[idzl + str], val_center, ions[idzr + str], dz));
-		}
-		for (int i = 0; i < n_buffers; ++i) {
-			str = i * n_elements;
-			val_center = buffers[idfull + str];
-			evo_buffers[idfull + str] = D_buf[i] * (d2YdX2(buffers[idxl + str], val_center, buffers[idxr + str], dx) +
-				d2YdX2(buffers[idyl + str], val_center, buffers[idyr + str], dy) +
-				d2YdX2(buffers[idzl + str], val_center, buffers[idzr + str], dz));
-		}
+	for (int i = 0; i < n_buffers; ++i) {
+		str = i * n_elements;
+		val_center = buffers[idfull + str];
+		evo_buffers[idfull + str] = D_buf[i] * (d2YdX2(buffers[idxl + str], val_center, buffers[idxr + str], dx) +
+			d2YdX2(buffers[idyl + str], val_center, buffers[idyr + str], dy) + 
+			d2YdX2(buffers[idzl + str], val_center, buffers[idzr + str], dz));
 	}
 	//reaction
 	double R;
@@ -465,7 +450,7 @@ void DyadRDCPU::_EvolutionOp(int idx, int idy, int idz, int idx_batch, double dt
 
 void DyadRDCPU::_GetFreeBuffers(int idx, int idy, int idz, int idx_batch) {
 	int _idx_buff = 0;
-	int idfull = _Index(idx, idy, idz, idx_batch);
+	int idfull = _Index(idx, idy,idz, idx_batch);
 	for (int j = 0; j < n_ions; ++j) {
 		int idx2 = idfull + j * n_elements;
 		int idx3;
@@ -495,7 +480,7 @@ void DyadRDCPU::_UpdateEvo(int idx, int idy, int idz, int idx_batch, double dt) 
 		if (idz == nz - 1 && SL_binds_ion[j]) {
 			double s1 = K1[idx_SL] + ions[idx2];
 			double s2 = K2[idx_SL] + ions[idx2];
-			evo_ions[idx2] *= 1 /  (1 + N1[idx_SL] * K1[idx_SL] / (s1 * s1) + N2[idx_SL] * K2[idx_SL] / (s2 * s2));
+			evo_ions[idx2] *= 1 / (1 + N1[idx_SL] * K1[idx_SL] / (s1 * s1) + N2[idx_SL] * K2[idx_SL] / (s2 * s2));
 			++idx_SL;
 		}
 		ions[idx2] += evo_ions[idx2] * dt;
@@ -511,17 +496,17 @@ void DyadRDCPU::RunRD(double dt, int idx_batch) {
 	for (int idx = 1; idx < nx - 1; ++idx)
 		for (int idy = 1; idy < ny - 1; ++idy)
 			for (int idz = 0; idz < nz; ++idz)
-				_EvolutionOp(idx, idy, idz, idx_batch,dt);
+			_EvolutionOp(idx, idy, idz, idx_batch, dt);
 	for (int idx = 1; idx < nx - 1; ++idx)
-		for (int idy = 1; idy < ny - 1; ++idy)
+		for (int idy = 1; idy < ny - 1; ++idy) 
 			for (int idz = 0; idz < nz; ++idz) {
-				_UpdateEvo(idx, idy, idz, idx_batch, dt);
-				_GetFreeBuffers(idx, idy, idz, idx_batch);
-			}
+			_UpdateEvo(idx, idy, idz, idx_batch, dt);
+			_GetFreeBuffers(idx, idy, idz, idx_batch);
+		}
 }
 
 void DyadRDCPU::RunMC(double dt, int n_thread) {
-	channels->RunMC(dt, n_thread, ions_near_channels);
+	channels->RunMC(dt, n_thread, ions_near_channels, *jsr_ions, V);
 }
 
 double DyadRDCPU::GetL() {
@@ -572,17 +557,6 @@ std::map <std::string, std::vector<double> > DyadRDCPU::GetIonsNearChannels(std:
 		out.insert(std::pair<std::string, std::vector<double> >(ions_data[i]->name, std::vector<double>(itb, ite)));
 	}
 	return out;
-}
-
-std::vector<uint64_t> DyadRDCPU::GetDimensions() {
-	return dyad_dims;
-}
-
-std::vector<uint64_t> DyadRDCPU::GetChannelsDimensions() {
-	return channels_dims;
-}
-std::vector<uint64_t> DyadRDCPU::GetIonsNearChannelsDimensions() {
-	return channels_ions_dims;
 }
 
 DyadRDCPU::~DyadRDCPU() {

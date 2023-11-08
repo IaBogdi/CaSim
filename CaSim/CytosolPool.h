@@ -8,6 +8,7 @@ public:
 	std::map<std::string, std::map<std::string, int> > idx_bufion; //index for fast detection of number for output
 	std::vector < double > init_buffers;
 	double R;
+	double V; //Voltage
 	std::vector<double> ions_init;
 	std::vector<double> D_ions;
 	std::vector<double> onetau_ions;
@@ -73,7 +74,7 @@ public:
 	void Reset();
 	~CytosolPool();
 	void RunRD(double, int);
-	void GetIonsandBuffers(double*&, double*&);
+	void GetIonsBuffersandV(double*&, double*&,double&);
 	void Update(double*&, const std::vector<double>&);
 	std::vector<double>& GetExtraCellularIons();
 	virtual std::map < std::string, std::vector<double> > GetConcentrations(std::vector<std::string>&);

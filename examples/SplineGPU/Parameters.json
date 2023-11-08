@@ -106,7 +106,7 @@
             }
         },
         "Start": "Equilibrium",
-        "Type": "Reaction-DiffusionMP2D",
+        "Type": "2D",
         "dx": 10,
         "dy": 10,
         "dz": 5,
@@ -123,7 +123,7 @@
     "Name": "SplineCREFinv2",
     "NumCores": 25,
     "NumScenarios": 200,
-    "NumThreads": 100,
+    "NumBatch": 100,
     "Outputs": [
         "Calcium",
         "Magnesium",

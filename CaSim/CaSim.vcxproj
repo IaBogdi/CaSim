@@ -168,12 +168,10 @@
     <ClCompile Include="CalciumReleaseSite.cpp" />
     <ClCompile Include="CaSolver.cpp" />
     <ClCompile Include="CytosolPool.cpp" />
-    <ClCompile Include="CytosolRDCPU.cpp" />
     <ClCompile Include="CytosolSeries.cpp" />
     <ClCompile Include="DyadChannels.cpp" />
     <ClCompile Include="DyadRD2DCPU.cpp" />
     <ClCompile Include="DyadRDCPU.cpp" />
-    <ClCompile Include="EmptyCytosol.cpp" />
     <ClCompile Include="IndChannelCREAnalyzer.cpp" />
     <ClCompile Include="IonChannel.cpp" />
     <ClCompile Include="TwoStateSplineModel.cpp" />
@@ -205,17 +203,12 @@
     <ClInclude Include="CalciumReleaseSite.h" />
     <ClInclude Include="CaSolver.h" />
     <ClInclude Include="CytosolPool.h" />
-    <ClInclude Include="CytosolRD.h" />
-    <ClInclude Include="CytosolRDCPU.h" />
-    <ClInclude Include="CytosolRDMP.h" />
     <ClInclude Include="CytosolSeries.h" />
     <ClInclude Include="DyadChannels.h" />
-    <ClInclude Include="DyadRD.h" />
     <ClInclude Include="DyadRD2DCPU.h" />
-    <ClInclude Include="DyadRD2DwCytosol.h" />
-    <ClInclude Include="DyadRDMP2D.h" />
     <ClInclude Include="DyadRDCPU.h" />
     <ClInclude Include="DyadRDMP.h" />
+    <ClInclude Include="DyadRDMP2D.h" />
     <ClInclude Include="DyadSeries.h" />
     <ClInclude Include="EmptyCytosol.h" />
     <ClInclude Include="IndChannelCREAnalyzer.h" />
@@ -248,12 +241,8 @@
     <ClInclude Include="TwoStatePoModel.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="CytosolRDMP.cu" />
-    <CudaCompile Include="DyadRD2DwCytosol.cu" />
-    <CudaCompile Include="DyadRDMP2D.cu" />
     <CudaCompile Include="DyadRDMP.cu" />
-    <CudaCompile Include="CytosolRD.cu" />
-    <CudaCompile Include="DyadRD.cu" />
+    <CudaCompile Include="DyadRDMP2D.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

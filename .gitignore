@@ -1,0 +1,6 @@
+x64/
+.vs/
+*.h5
+/CaSim/CannellCRENew/Parameters.json
+/CaSim/CannellCRENewv2/Parameters.json
+*.pdf

@@ -13,17 +13,21 @@
 #include "CaSolver.h"
 #include "IndChannelCREAnalyzer.h"
 #include "SRPool.h"
+/* 
+#include "DyadRD2DwCytosol.h"
 #include "DyadRD.h"
-#include "DyadRDCPU.h"
+*/
 #include "DyadRDMP.h"
 #include "DyadRDMP2D.h"
-#include "DyadRD2DwCytosol.h"
 #include "DyadRD2DCPU.h"
+#include "DyadRDCPU.h"
+/*
 #include "CytosolRD.h"
 #include "CytosolRDCPU.h"
 #include "CytosolRDMP.h"
-#include "CytosolPool.h"
 #include "EmptyCytosol.h"
+*/
+#include "CytosolPool.h"
 #include "NSRConstPool.h"
 
 
@@ -53,6 +57,7 @@ class ParallelHybridSolver : public CaSolver {
 	long channels_it;
 	long channels_ions_it;
 	int n_iterations_output;
+	double V; //Voltage
 	std::vector<std::vector<double> > ca_nsr;
 	std::vector<std::vector<double> > ca_jsr;
 	std::vector<std::vector<double> > cyto;

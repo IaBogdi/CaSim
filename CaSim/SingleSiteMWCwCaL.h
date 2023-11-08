@@ -32,8 +32,8 @@ class SingleSiteMWCwCaL : public QMatrixModel
 		KCaL,
 		f0;
 protected:
-	void RebuildQMatrix(std::vector<double>&);
-	void RebuildQMatrixofSingleState(std::vector<double>&);
+	void RebuildQMatrix(const std::unordered_map<std::string, double>&);
+	void RebuildQMatrixofSingleState(const std::unordered_map<std::string, double>&);
 private:
 	void SetRow(int, double, int, double, double);
 	void _BuildAdjacencyList();

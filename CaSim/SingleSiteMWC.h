@@ -27,8 +27,8 @@ class SingleSiteMWC : public QMatrixModel {
 		alphaI,
 		alphaMgI;
 protected:
-	void RebuildQMatrix(std::vector<double>&);
-	void RebuildQMatrixofSingleState(std::vector<double>&);
+	void RebuildQMatrix(const std::unordered_map<std::string, double>&);
+	void RebuildQMatrixofSingleState(const std::unordered_map<std::string, double>&);
 private:
 	void SetRow(int,double, int,double);
 	void _BuildAdjacencyList();

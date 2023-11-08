@@ -17,7 +17,7 @@ int QMatrixModel::GetNStates() {
     return states.size();
 }
 
-double QMatrixModel::GetRate(std::vector<double>& ions)
+double QMatrixModel::GetRate(const std::unordered_map<std::string, double>& ions)
 {
     RebuildQMatrixofSingleState(ions);
     return -Q[cur_state][cur_state];
@@ -34,7 +34,7 @@ void QMatrixModel::MakeTransition(double rand) {
     }
 }
 
-void QMatrixModel::SetMacroState(int macro_state, double rand, std::vector<double>& ions) {
+void QMatrixModel::SetMacroState(int macro_state, double rand, const std::unordered_map<std::string, double>& ions) {
     RebuildQMatrix(ions);
     //S = [Q | 1]; Pe = 1 * (S * S.T).I
     MatrixXd S = MatrixXd::Ones(Q.size(), Q.size() + 1);

@@ -1,16 +1,17 @@
 #pragma once
 #include "KineticModel.h"
+#include <map>
 class TwoStateModel :
     public KineticModel
 {
 protected:
-	virtual double _KClose(std::vector<double>&) = 0;
-	virtual double _KOpen(std::vector<double>&) = 0;
+	virtual double _KClose(const std::unordered_map<std::string, double>&) = 0;
+	virtual double _KOpen(const std::unordered_map<std::string, double>&) = 0;
 public:
-	double GetRate(std::vector<double>& ions);
+	double GetRate(const std::unordered_map<std::string, double>& ions);
 	bool isOpen();
 	void MakeTransition(double rand);
-	void SetMacroState(int, double, std::vector<double>&);
+	void SetMacroState(int, double, const std::unordered_map<std::string, double>&);
 	int GetMacroState();
 	int GetMacroState(int);
 	int GetNStates();

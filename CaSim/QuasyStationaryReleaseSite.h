@@ -3,13 +3,15 @@
 #include "StationaryDiffusionModel.h"
 #include "KineticModel.h"
 #include "LinearNaraghiNeher.h"
+#include <unordered_map>
+#include <string>
 #include <memory>
 
 class QuasyStationaryReleaseSite :public CalciumReleaseSite {
 	std::unique_ptr < StationaryDiffusionModel > diffusion;
 	std::vector < std::shared_ptr < KineticModel > >   channels;
 	std::string channel_name;
-	std::vector<std::vector<double> > ions;
+	std::vector<std::unordered_map<std::string, double> > ions;
 	double max_time;
 	int num_channels = 0;
 	std::vector<double> GetOutVector(double, std::vector<double>&);

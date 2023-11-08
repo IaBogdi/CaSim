@@ -7,8 +7,8 @@ private:
 		ncaopen, kopenmax,
 		kclose0, ncaclose;
 protected:
-	double _KClose(std::vector<double>&);
-	double _KOpen(std::vector<double>&);
+	double _KClose(const std::unordered_map<std::string, double>&);
+	double _KOpen(const std::unordered_map<std::string, double>&);
 public:
 	SheepCannell(std::map<std::string, double>&);
 };

@@ -80,6 +80,7 @@
                 "Coordinates": "Jayasinghe.txt",
                 "Model": "SheepCannell",
                 "Parameters": {
+					          "kclose0": 245,
                     "kopen0": 457000.0,
                     "kopenmax": 800,
                     "ncaclose": -0.27,
@@ -109,7 +110,7 @@
             }
         },
         "Start": "Equilibrium",
-        "Type": "Reaction-DiffusionMP2DCPU",
+        "Type": "CPU2D",
         "dx": 10,
         "dy": 10,
         "dz": 5,
@@ -126,7 +127,7 @@
     "Name": "CannellCPU",
     "NumCores": 20,
     "NumScenarios": 20,
-    "NumThreads": 20,
+    "NumBatch": 20,
     "Outputs": [
         "Calcium",
         "Magnesium",

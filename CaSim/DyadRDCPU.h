@@ -11,7 +11,9 @@
 #include "Structures.h"
 #include "DyadChannels.h"
 
-class DyadRDCPU : public DyadSeries {
+
+class DyadRDCPU : public DyadSeries
+{
 	std::unique_ptr<DyadChannels> channels;
 	std::map<std::string, std::map<std::string, int> > idx_bufion; //index for fast detection of number for output
 	int sr_size, sl_size;
@@ -22,6 +24,7 @@ class DyadRDCPU : public DyadSeries {
 	std::map<std::string, std::unique_ptr<IonSarcolemma<double> > > ions_and_SL;
 	std::vector < double > init_buffers;
 	double R;
+	double V;
 	std::vector<double> D_ions;
 	std::vector<double> ions; //[n_elements x n_ions]
 	double* init_ions;
@@ -91,23 +94,22 @@ class DyadRDCPU : public DyadSeries {
 	double sx, sy;
 	bool pointers_are_set;
 	bool dt_is_set;
-	std::vector<uint64_t> dyad_dims;
-	std::vector<uint64_t> channels_ions_dims;
-	std::vector<uint64_t> channels_dims;
+	const std::vector<double>* jsr_ions;
 	inline double d2YdX2(double, double, double, double);
 	void _EvolutionOp(int, int, int, int, double);
 	void _UpdateEvo(int, int, int, int, double);
 	void _GetFreeBuffers(int, int, int, int);
+	void _SetIonsAndBuffersNearChannels();
 public:
-	DyadRDCPU(nlohmann::json&, int);
+	DyadRDCPU(nlohmann::json&, nlohmann::json&, int);
 	void Reset();
 	~DyadRDCPU();
 	bool UsesGPU();
-	int GetNIons();
+	std::vector<std::string> GetListofIons();
 	void InitOpening(int, int);
 	void RunRD(double, int);
 	void RunMC(double, int);
-	void Update(double*&, double*&, const std::vector<double>&, const std::vector<double>&);
+	void Update(double*&, double*&, const std::vector<double>&, const std::vector<double>&, double&);
 	double GetElementVolume();
 	int GetNumSRChannels();
 	std::vector<double> GetTotalSRCurrent();
@@ -116,8 +118,5 @@ public:
 	std::map < std::string, std::vector<double> > GetConcentrations(std::vector<std::string>&);
 	std::map <std::string, std::vector<int> > GetChannelsStates(std::vector<std::string>&);
 	std::map <std::string, std::vector<double> > GetIonsNearChannels(std::vector<std::string>&);
-	std::vector<uint64_t> GetDimensions();
-	std::vector<uint64_t> GetChannelsDimensions();
-	std::vector<uint64_t> GetIonsNearChannelsDimensions();
 };
 

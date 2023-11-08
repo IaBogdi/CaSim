@@ -12,7 +12,7 @@ ParallelHybridSolver::ParallelHybridSolver(json& file) {
 	dt *= 1e-6;
 	d_dt = dt;
 	n_iter = time_max / dt;
-	n_threads = file["NumThreads"] <= 0 ? omp_get_max_threads() : int(file["NumThreads"]);
+	n_threads = file["NumBatch"];
 	n_cores = file["NumCores"];
 	omp_set_num_threads(n_cores);
 	ca_nsr.resize(n_threads);
@@ -54,30 +54,35 @@ ParallelHybridSolver::ParallelHybridSolver(json& file) {
 		nsr = std::make_unique<NSRConstPool>(file["nSR"], n_threads);
 
 	std::unordered_map<std::string_view, std::function<std::unique_ptr<DyadSeries>(json&,int) > > dyad_type;
+	/*
 	dyad_type["Reaction-Diffusion"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRD>(file["Dyad"], n_thr);
 	};
-	dyad_type["Reaction-DiffusionCPU"] = [](json& file, int n_thr) {
-		return std::make_unique<DyadRDCPU>(file["Dyad"], n_thr);
+	*/
+	dyad_type["3D"] = [](json& file, int n_thr) {
+		return std::make_unique<DyadRDMP>(file["Dyad"], file["jSR"], n_thr);
 	};
-	dyad_type["Reaction-DiffusionMP"] = [](json& file, int n_thr) {
-		return std::make_unique<DyadRDMP>(file["Dyad"], n_thr);
+	dyad_type["CPU3D"] = [](json& file, int n_thr) {
+		return std::make_unique<DyadRDCPU>(file["Dyad"], file["jSR"], n_thr);
 	};
-	dyad_type["Reaction-DiffusionMP2D"] = [](json& file, int n_thr) {
+	dyad_type["2D"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRDMP2D>(file["Dyad"], file["jSR"], n_thr);
 	};
+	dyad_type["CPU2D"] = [](json& file, int n_thr) {
+		return std::make_unique<DyadRD2DCPU>(file["Dyad"], file["jSR"], n_thr);
+	};
+	/*
 	dyad_type["Reaction-DiffusionCyto2D"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRD2DwCytosol>(file["Dyad"], file["Cytosol"], n_thr);
 	};
-	dyad_type["Reaction-DiffusionMP2DCPU"] = [](json& file, int n_thr) {
-		return std::make_unique<DyadRD2DCPU>(file["Dyad"], n_thr);
-	};
+	*/
 	std::string_view str(file["Dyad"]["Type"]);
 	dyad = dyad_type[str](file,n_threads);
 	dyad_dims = dyad->GetDimensions();
 	channels_dims = dyad->GetChannelsDimensions();
 	channels_ions_dims = dyad->GetIonsNearChannelsDimensions();
 	std::unordered_map<std::string_view, std::function<std::unique_ptr<CytosolSeries>(json&, int) > > cytosol_type;
+	/*
 	cytosol_type["Reaction-Diffusion"] = [](json& file, int n_thr) {
 		if (file["nSR"]["Type"] == "ConstPool")
 			return std::make_unique<CytosolRD>(file["Cytosol"], file["Dyad"], file["nSR"], n_thr);
@@ -93,17 +98,19 @@ ParallelHybridSolver::ParallelHybridSolver(json& file) {
 			return std::make_unique<CytosolRDMP>(file["Cytosol"], file["Dyad"], file["nSR"], n_thr);
 		return std::make_unique<CytosolRDMP>(file["Cytosol"], file["Dyad"], n_thr);
 	};
+	*/
 	cytosol_type["Pool"] = [](json& file, int n_thr) {
 		if (file["nSR"]["Type"] == "ConstPool")
 			return std::make_unique<CytosolPool>(file["Cytosol"], file["Dyad"], file["nSR"], n_thr);
 		return std::make_unique<CytosolPool>(file["Cytosol"], file["Dyad"], n_thr);
 	};
 	std::string_view str2(file["Cytosol"]["Type"]);
-	cytosol = !str.compare("Reaction-DiffusionCyto2D") ? std::make_unique<EmptyCytosol>(file["Cytosol"], file["Dyad"]) : cytosol_type[str2](file, n_threads);
+	//cytosol = !str.compare("Reaction-DiffusionCyto2D") ? std::make_unique<EmptyCytosol>(file["Cytosol"], file["Dyad"]) : cytosol_type[str2](file, n_threads);
+	cytosol = cytosol_type[str2](file, n_threads);
 	cytosol_dims = cytosol->GetDimensions();
 	dyad->IsCytosolGPU(cytosol->UsesGPU());
 	if (file["jSR"]["Type"] == "Pool") {
-		sr = std::make_unique<SRPool>(file["jSR"], n_threads, dyad->GetElementVolume(), dyad->GetNumSRChannels(), dyad->GetNIons());
+		sr = std::make_unique<SRPool>(file["jSR"], n_threads, dyad->GetElementVolume(), dyad->GetNumSRChannels(), dyad->GetListofIons());
 		sr_dims = sr->GetDimensions();
 	}
 }
@@ -137,8 +144,8 @@ void ParallelHybridSolver::Update() {
 	double* d_buffers_cytosol = nullptr;
 	double* d_currents = nullptr;
 	cudaDeviceSynchronize();
-	cytosol->GetIonsandBuffers(d_ions_cytosol, d_buffers_cytosol);
-	dyad->Update(d_ions_cytosol, d_buffers_cytosol, sr->GetIons(), cytosol->GetExtraCellularIons());
+	cytosol->GetIonsBuffersandV(d_ions_cytosol, d_buffers_cytosol,V);
+	dyad->Update(d_ions_cytosol, d_buffers_cytosol, sr->GetIons(), cytosol->GetExtraCellularIons(),V);
 	dyad->GetEffluxes(d_currents);
 	cytosol->Update(d_currents, nsr->GetIons());
 	cudaDeviceSynchronize();

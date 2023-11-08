@@ -23,7 +23,7 @@ class SRPool :public SRSeries {
 	std::vector<uint64_t> sr_dims;
 	bool is_const;
 public:
-	SRPool(nlohmann::json&, int,double,int, int);
+	SRPool(nlohmann::json&, int,double,int,const std::vector<std::string>&);
 	void Run(double, int);
 	void Reset();
 	bool UsesGPU();

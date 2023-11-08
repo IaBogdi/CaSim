@@ -1,7 +1,7 @@
 #include "TwoStateModel.h"
 
 
-double TwoStateModel::GetRate(std::vector<double>& ions) {
+double TwoStateModel::GetRate(const std::unordered_map<std::string, double>& ions) {
 	if (cur_state)
 		return _KClose(ions);
 	return _KOpen(ions);
@@ -15,7 +15,7 @@ void TwoStateModel::MakeTransition(double rand) {
 	cur_state = (cur_state + 1) % 2;
 }
 
-void TwoStateModel::SetMacroState(int macro_state, double rand, std::vector<double>& ions) {
+void TwoStateModel::SetMacroState(int macro_state, double rand, const std::unordered_map<std::string, double>& ions) {
 	cur_state = macro_state;
 }
 

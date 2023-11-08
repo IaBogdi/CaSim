@@ -53,6 +53,7 @@ class DyadRDMP : public DyadSeries {
 	float* evo_buffers;
 	float* d_ions_gradients;
 	double grad_mult;
+	double* gradients;
 	std::vector<short> buffer_binds_ion;
 	std::vector<float> D_buf; //buf_idx i.e. number of ion-buffer connections
 	std::vector<float> kon_buf; //buf_idx
@@ -118,19 +119,20 @@ class DyadRDMP : public DyadSeries {
 	bool pointers_are_set;
 	bool dt_is_set;
 	double* d_mult_z;
-	std::vector<uint64_t> dyad_dims;
-	std::vector<uint64_t> channels_ions_dims;
-	std::vector<uint64_t> channels_dims;
+	double V;
+	const std::vector<double>* jsr_ions;
+	double* d_ions_from_cytosol;
+	double* d_buffers_from_cytosol;
 public:
-	DyadRDMP(nlohmann::json&, int);
+	DyadRDMP(nlohmann::json&, nlohmann::json&, int);
 	void Reset();
 	~DyadRDMP();
 	bool UsesGPU();
-	int GetNIons();
+	std::vector<std::string> GetListofIons();
 	void InitOpening(int, int);
 	void RunRD(double, int);
 	void RunMC(double, int);
-	void Update(double*&, double*&, const std::vector<double>&, const std::vector<double>&);
+	void Update(double*&, double*&, const std::vector<double>&, const std::vector<double>&, double&);
 	double GetElementVolume();
 	int GetNumSRChannels();
 	std::vector<double> GetTotalSRCurrent();
@@ -139,7 +141,4 @@ public:
 	std::map < std::string, std::vector<double> > GetConcentrations(std::vector<std::string>&);
 	std::map <std::string, std::vector<int> > GetChannelsStates(std::vector<std::string>&);
 	std::map <std::string, std::vector<double> > GetIonsNearChannels(std::vector<std::string>&);
-	std::vector<uint64_t> GetDimensions();
-	std::vector<uint64_t> GetChannelsDimensions();
-	std::vector<uint64_t> GetIonsNearChannelsDimensions();
 };

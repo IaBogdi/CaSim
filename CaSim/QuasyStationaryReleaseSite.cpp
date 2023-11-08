@@ -33,13 +33,10 @@ QuasyStationaryReleaseSite::QuasyStationaryReleaseSite(nlohmann::json& file) {
 	}
 	in.close();
 	//add other ions
-	std::vector<double> ions_t;
-	ions_t.push_back(file["Calcium Release Site"]["Parameters"]["Dyadic Cleft"]["Ions"]["Calcium"]["Concentration"]);
+	std::unordered_map<std::string, double> ions_t;
 	for (auto const& el : file["Calcium Release Site"]["Parameters"]["Dyadic Cleft"]["Ions"].items())
-		if(el.key().compare("Calcium"))
-			ions_t.push_back(el.value()["Concentration"]);
-	for (int i = 0; i < num_channels; ++i)
-		ions.push_back(ions_t);
+			ions_t[el.key()] = el.value()["Concentration"];
+	ions.resize(num_channels, ions_t);
 	current = file["Calcium Release Site"]["Parameters"]["Channels"][channel_name]["Current"];
 	ca_b = file["Calcium Release Site"]["Parameters"]["Dyadic Cleft"]["Ions"]["Calcium"]["Concentration"];
 	dca = file["Calcium Release Site"]["Parameters"]["Dyadic Cleft"]["Ions"]["Calcium"]["D"];
@@ -89,7 +86,7 @@ std::vector<double> QuasyStationaryReleaseSite::GetOutVector(double t)
 void QuasyStationaryReleaseSite::RunSimulation(datavector& channels_out, datavector& concentrations_dc, datavector& concentrations_lumen, datavector& concentrations_cyt,int channel, ParallelRng* rng) {
 	//set channels to closed state
 	for (int i = 0; i < num_channels; ++i)
-		ions[i][0] = ca_b;
+		ions[i]["Calcium"] = ca_b;
 	for (int i = 0; i < num_channels; ++i)
 		channels[i]->SetMacroState(0,rng->runif(),ions[i]);
 	//find initial open channel
@@ -104,7 +101,7 @@ void QuasyStationaryReleaseSite::RunSimulation(datavector& channels_out, datavec
 		concentrations_dc["Calcium"].push_back(GetOutVector(t,C));
 		double total_rate = 0;
 		for (int i = 0; i < C.size(); ++i) {
-			ions[i][0] = C[i];
+			ions[i]["Calcium"] = C[i];
 			total_rate += channels[i]->GetRate(ions[i]);
 		}
 		double dt = rng->rexp(1 / total_rate);

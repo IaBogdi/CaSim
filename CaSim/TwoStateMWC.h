@@ -4,7 +4,7 @@
 
 class TwoStateMWC :public TwoStatePoModel {
 protected:
-	double Po(std::vector<double>&);
+	double Po(const std::unordered_map<std::string, double>&);
 private:
 	double fCa, 
 		KCa, 

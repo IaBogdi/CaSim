@@ -1,6 +1,6 @@
 #include "TwoStatePoModel.h"
 
-double TwoStatePoModel::GetRate(std::vector<double>& ions) {
+double TwoStatePoModel::GetRate(const std::unordered_map<std::string, double>& ions) {
 	if (cur_state)
 		return kclose;
 	double P = Po(ions);
@@ -25,7 +25,7 @@ void TwoStatePoModel::MakeTransition(double rand) {
 	cur_state = (cur_state + 1) % 2;
 }
 
-void TwoStatePoModel::SetMacroState(int macro_state, double rand, std::vector<double>& ions) {
+void TwoStatePoModel::SetMacroState(int macro_state, double rand, const std::unordered_map<std::string, double>& ions) {
 	cur_state = macro_state;
 }
 

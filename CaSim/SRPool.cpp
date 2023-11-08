@@ -1,15 +1,23 @@
 #include "SRPool.h"
 #include <iostream>
 
-SRPool::SRPool(nlohmann::json& j, int n_threads, double V_elem,int n_channels, int n_ions) {
+SRPool::SRPool(nlohmann::json& j, int n_threads, double V_elem,int n_channels,const std::vector<std::string>& ions_list) {
 	CQ_conc = j["Total CQ (uM)"];
-	for (auto const& el : j["Ions"].items()) {
-		auto pars_ion = el.value();
-		nCQ_sites.push_back(pars_ion["Binding sites of CQ"]);
-		K_CQ.push_back(pars_ion["K CQ (uM)"]);
-		tau_refill.push_back(pars_ion["T refill (ms)"]);
-		ions_0.push_back(pars_ion["Concentration"]);
-		ion_names.push_back(el.key());
+	for (auto const& ion : ions_list) {
+		if (j["Ions"].find(ion) != j["Ions"].end()) {
+			auto pars_ion = j["Ions"][ion];
+			nCQ_sites.push_back(pars_ion["Binding sites of CQ"]);
+			K_CQ.push_back(pars_ion["K CQ (uM)"]);
+			tau_refill.push_back(pars_ion["T refill (ms)"]);
+			ions_0.push_back(pars_ion["Concentration"]);
+		}
+		else {
+			nCQ_sites.push_back(0);
+			K_CQ.push_back(0);
+			tau_refill.push_back(1);
+			ions_0.push_back(0);
+		}
+		ion_names.push_back(ion);
 	}
 	V = j["V jSR (nm3)"];
 	V_dyad_element = V_elem;

@@ -33,7 +33,7 @@ __device__ float d2YdX2MP(float Yl, float Yc, float Yr, float dX) {
 }
 
 __device__ int IndexMP(int idx, int idy, int idz, int idw) {
-	return idx + _nx * (idy + _ny * (idz + _nz * idw));
+	return idz + _nz * (idy + _ny * (idx + _nx * idw));
 }
 
 //initial values (Ca + buffers)
@@ -74,17 +74,23 @@ __global__ void set_initialsMP(float* ions, float* init_ions, float* buffers, fl
 __global__ void set_currentsMP(float* current_grid, float* current_values, int* channel_x, int* channel_y, int* channel_z) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int n_total_channels = _n_threads * _n_channels;
-	int idx_grid = channel_x[threadIdx.x] + _nx * (channel_y[threadIdx.x] + _ny * (channel_z[threadIdx.x] + _nz * blockIdx.x));
+	int idx_grid = IndexMP(channel_x[threadIdx.x], channel_y[threadIdx.x], channel_z[threadIdx.x], blockIdx.x);
 	for (int j = 0; j < _n_ions; ++j)
 		current_grid[idx_grid + j * _n_elements] = current_values[idx + j * n_total_channels];
 }
 
-__global__ void get_ions_near_channelsMP(double* ions, double* ions_near_channels, int* channel_x, int* channel_y, int* channel_z) {
+__global__ void get_ions_near_channelsMP(double* ions, double* buffers, float* buf_free, double* ions_near_channels, int* channel_x, int* channel_y, int* channel_z) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int n_total_channels = _n_threads * _n_channels;
-	int idx_grid = channel_x[threadIdx.x] + _nx * (channel_y[threadIdx.x] + _ny * (channel_z[threadIdx.x] + _nz * blockIdx.x));
+	int idx_grid = IndexMP(channel_x[threadIdx.x], channel_y[threadIdx.x], channel_z[threadIdx.x], blockIdx.x);
 	for (int j = 0; j < _n_ions; ++j) {
 		ions_near_channels[idx + j * n_total_channels] = ions[idx_grid + j * _n_elements];
+	}
+	for (int j = 0; j < _n_buffers; ++j) {
+		ions_near_channels[idx + (j + _n_ions) * n_total_channels] = buffers[idx_grid + j * _n_elements];
+	}
+	for (int j = 0; j < _n_buffers_unique; ++j) {
+		ions_near_channels[idx + (_n_buffers + _n_ions + j) * n_total_channels] = buf_free[idx_grid + j * _n_elements];
 	}
 }
 
@@ -105,7 +111,7 @@ __global__ void diffusion_stepMP(float* ions, float* buffers, float* evo_ions, f
 			int idzr = IndexMP(idx, idy, idz + 1, idx_batch);
 			float val_center;
 			int str;
-			if (idz == 0) {
+			if (idz == 0) { 
 				for (int j = 0; j < _n_ions; ++j) {
 					str = j * _n_elements;
 					val_center = ions[idfull + str];
@@ -195,7 +201,7 @@ __global__ void sum_stepMP(float* evo_ions_diffusion, float* ions, float* evo_bu
 	int idz = threadIdx.z + blockDim.z * blockIdx.z;
 	int idx_batch = idz / _nz;
 	idz %= _nz;
-	int idfull = IndexMP(idx, idy, idz, idx_batch);;
+	int idfull = IndexMP(idx, idy, idz, idx_batch);
 	int _idx_SL = 0;
 	int idx2;
 	if (idx < _nx && idy < _ny && idz < _nz && idx_batch < _n_threads) {
@@ -238,7 +244,7 @@ __global__ void evo_stepMP(float* evo_ions_total, double* ions, float* ions_f, f
 			for (int i = 0; i < _n_buffers; ++i) {
 				idx2 = idfull + i * _n_elements;
 				tot_double = (double)evo_buffers_total[idx2];
-				buffers[idx2] += +tot_double * _dt;
+				buffers[idx2] += tot_double * _dt;
 				buffers_f[idx2] = buffers[idx2];
 			}
 		}
@@ -261,7 +267,7 @@ __global__ void get_free_buffersMP(float* buffers, float* buf_free, float* buf_t
 				int idx3;
 				if (j == 0) {
 					for (int i = 0; i < _n_buffers_unique; ++i)
-						buf_free[idx2 + i * _n_elements] = buf_tot[i];
+						buf_free[idfull + i * _n_elements] = buf_tot[i];
 				}
 				for (int i = 0; i < _n_buffers_unique; ++i) {
 					if (ion_buffer_table[i + j * _n_buffers_unique]) {
@@ -276,15 +282,8 @@ __global__ void get_free_buffersMP(float* buffers, float* buf_free, float* buf_t
 	}
 }
 
-__device__ double rbmod(double ion, float K1, float K2, float N1, float N2) {
-	float s1 = K1 + ion;
-	float s2 = K2 + ion;
-	return 1 / (1 + N1 * K1 / (s1 * s1) + N2 * K2 / (s2 * s2));
-}
-
 //Gradients dimensions: x - x coordinate, block - scenario. Mixed precision part (calculates in double precision)
-__global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_table, double* grads_x, float* D_ions, float* D_buffers, double* mult) {// float* K1, float* K2, float* N1, float* N2, short* ion_SL_table) {
-	/*
+__global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_table, double* grads_x, float* D_ions, float* D_buffers, double* mult) {
 	int idx = threadIdx.x;
 	int n_batch = blockIdx.x;
 	int blocksize = blockDim.x;
@@ -300,8 +299,6 @@ __global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_ta
 		int idfull3 = 0;
 		int idy; //number of blocks == number of threads == number of simulations in batch
 		str = 0;
-		int _idx_SL;
-		double d1, d2, d3;
 		for (int idz = 0; idz < _nz; ++idz) {
 			idy = 1;
 			idfull = IndexMP(idx, idy, idz, n_batch);
@@ -309,19 +306,9 @@ __global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_ta
 			idfull2 = IndexMP(idx, idy, idz, n_batch);
 			idy = 2;
 			idfull3 = IndexMP(idx, idy, idz, n_batch);
-			_idx_SL = 0;
 			for (int j = 0; j < _n_ions; ++j) {
 				str = j * _n_elements;
-
-				if (ion_SL_table[j] && idz == _nz - 1) {
-					d1 = rbmod(ions[idfull + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					d2 = rbmod(ions[idfull2 + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					d3 = rbmod(ions[idfull3 + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					gradients_x[idx + blocksize * j] += (2 * d1 * ions[idfull + str] - 1.5 * d2 * ions[idfull2 + str] - 0.5 * d3 * ions[idfull3 + str]);
-					++_idx_SL;
-				}
-				else
-					gradients_x[idx + blocksize * j] += (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
+				gradients_x[idx + blocksize * j] += (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
 			}
 			for (int i = 0; i < _n_buffers; ++i) {
 				str = i * _n_elements;
@@ -335,17 +322,9 @@ __global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_ta
 			idfull2 = IndexMP(idx, idy, idz, n_batch);
 			idy = _ny - 3;
 			idfull3 = IndexMP(idx, idy, idz, n_batch);
-			_idx_SL = 0;
 			for (int j = 0; j < _n_ions; ++j) {
 				str = j * _n_elements;
-				if (ion_SL_table[j] && idz == _nz - 1) {
-					d1 = rbmod(ions[idfull + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					d2 = rbmod(ions[idfull2 + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					d3 = rbmod(ions[idfull3 + str], K1[_idx_SL], K2[_idx_SL], N1[_idx_SL], N2[_idx_SL]);
-					gradients_x[idx + blocksize * j] += (2 * d1 * ions[idfull + str] - 1.5 * d2 * ions[idfull2 + str] - 0.5 * d3 * ions[idfull3 + str]);
-					++_idx_SL;
-				}
-				else
+				gradients_x[idx + blocksize * j] += (2 * ions[idfull + str] - 1.5 * ions[idfull2 + str] - 0.5 * ions[idfull3 + str]);
 			}
 			for (int i = 0; i < _n_buffers; ++i) {
 				str = i * _n_elements;
@@ -374,7 +353,6 @@ __global__ void gradient_xMP(double* ions, double* buffers, short* ion_buffer_ta
 		for (int i = 0; i < _n_buffers; ++i)
 			grads_x[i + _n_ions + _n_ions_buffers * n_batch] = D_buffers[i] * _grad_mult * gradients_x[blocksize * (_n_ions + i)] * _sx;
 	}
-	*/
 }
 
 __global__ void gradient_yMP(double* ions, double* buffers, short* ion_buffer_table, double* grads_x, float* D_ions, float* D_buffers, double* mult) {
@@ -479,8 +457,7 @@ __global__ void set_boundariesMP(float* ions, float* buffers, double* ions_d, do
 }
 
 
-DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
-	channels = std::make_unique<DyadChannels>(j, nthreads);
+DyadRDMP::DyadRDMP(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	dx = j["dx"];
 	cudaMemcpyToSymbol(_dx, &dx, sizeof(float));
 	dy = j["dy"];
@@ -494,6 +471,7 @@ DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
 	blocky = j["CUDA"]["BLOCK Y"];
 	blockz = j["CUDA"]["BLOCK Z"];
 	R = j["Radius"];
+	V = j["Voltage"];
 	block.x = blockx, block.y = blocky, block.z = blockz;
 	n_threads = nthreads;
 	cudaStreamCreate(&(stream_dyad_mp));
@@ -505,10 +483,10 @@ DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
 	nz = z / dz + 1;
 	cudaMemcpyToSymbol(_nz, &nz, sizeof(nz));
 	dyad_dims.resize(5);
-	dyad_dims[1] = nx;
-	dyad_dims[2] = ny;
-	dyad_dims[3] = nz;
-	dyad_dims[4] = n_threads;
+	dyad_dims[1] = n_threads;
+	dyad_dims[2] = nx;
+	dyad_dims[3] = ny;
+	dyad_dims[4] = nz;
 	double sx = dy * dz / dx;
 	double sy = dx * dz / dy;
 	std::vector<double> mult_z;
@@ -548,40 +526,6 @@ DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
 		D_ions.push_back(pars_ion["D"]);
 	}
 	total_sr_current.resize(n_ions * n_threads);
-	//Channels
-	sl_size = channels->GetNSLIonChannels();
-	sr_size = channels->GetNSRIonChannels();
-	n_channels = sl_size + sr_size;
-	for (int j = 0; j < sr_size; ++j) {
-		auto p = channels->GetSRIonChannel(0, j)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
-		x_idx_v.push_back(p[0]);
-		y_idx_v.push_back(p[1]);
-		z_idx_v.push_back(p[2]);
-	}
-	for (int j = sr_size; j < n_channels; ++j) {
-		auto p = channels->GetSLIonChannel(0, j - sr_size)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
-		x_idx_v.push_back(p[0]);
-		y_idx_v.push_back(p[1]);
-		z_idx_v.push_back(p[2]);
-	}
-	cudaMemcpyToSymbol(_n_channels, &n_channels, sizeof(n_channels));
-	n_elements_near_channels = n_ions * n_channels * n_threads;
-	currents.resize(n_elements_near_channels);
-	channels_ions_dims.resize(3);
-	channels_ions_dims[1] = n_channels;
-	channels_ions_dims[2] = n_threads;
-	channels_dims.resize(3);
-	channels_dims[1] = n_channels;
-	channels_dims[2] = n_threads;
-	cudaMalloc(&d_currents, n_channels * n_ions * n_threads * sizeof(float));
-	cudaMalloc(&x_idx, x_idx_v.size() * sizeof(int));
-	cudaMemcpy(x_idx, x_idx_v.data(), x_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMalloc(&y_idx, y_idx_v.size() * sizeof(int));
-	cudaMemcpy(y_idx, y_idx_v.data(), y_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMalloc(&z_idx, z_idx_v.size() * sizeof(int));
-	cudaMemcpy(z_idx, z_idx_v.data(), z_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
-	ions_near_channels.resize(n_elements_near_channels);
-	cudaMemcpyToSymbol(_n_ions, &n_ions, sizeof(n_ions));
 	//Buffers
 	for (auto const& el : j["Buffers"].items()) {
 		auto pars_buff = el.value();
@@ -654,6 +598,38 @@ DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
 		else
 			SL_binds_ion.push_back(0);
 	}
+	channels = std::make_unique<DyadChannels>(j, j_jsr, nthreads, ions, buffers, V);
+	//Channels
+	sl_size = channels->GetNSLIonChannels();
+	sr_size = channels->GetNSRIonChannels();
+	n_channels = sl_size + sr_size;
+	for (int j = 0; j < sr_size; ++j) {
+		auto p = channels->GetSRIonChannel(0, j)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
+		x_idx_v.push_back(p[0]);
+		y_idx_v.push_back(p[1]);
+		z_idx_v.push_back(p[2]);
+	}
+	for (int j = sr_size; j < n_channels; ++j) {
+		auto p = channels->GetSLIonChannel(0, j - sr_size)->GetCoordinates()->GetCoordsOnGrid(dx, dy, dz);
+		x_idx_v.push_back(p[0]);
+		y_idx_v.push_back(p[1]);
+		z_idx_v.push_back(p[2]);
+	}
+	cudaMemcpyToSymbol(_n_channels, &n_channels, sizeof(n_channels));
+	channels_ions_dims.resize(3);
+	channels_ions_dims[1] = n_threads;
+	channels_ions_dims[2] = n_channels;
+	channels_dims.resize(3);
+	channels_dims[1] = n_threads;
+	channels_dims[2] = n_channels;
+	cudaMalloc(&d_currents, n_channels * n_ions * n_threads * sizeof(float));
+	cudaMalloc(&x_idx, x_idx_v.size() * sizeof(int));
+	cudaMemcpy(x_idx, x_idx_v.data(), x_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMalloc(&y_idx, y_idx_v.size() * sizeof(int));
+	cudaMemcpy(y_idx, y_idx_v.data(), y_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMalloc(&z_idx, z_idx_v.size() * sizeof(int));
+	cudaMemcpy(z_idx, z_idx_v.data(), z_idx_v.size() * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(_n_ions, &n_ions, sizeof(n_ions));
 	//calculate multiplier for gradient
 	pointers_are_set = false;
 	dt_is_set = false;
@@ -663,12 +639,16 @@ DyadRDMP::DyadRDMP(nlohmann::json& j, int nthreads) {
 	cudaMemcpyToSymbol(_n_buffers, &n_buffers, sizeof(n_buffers));
 	int n_buf_unique = buffers.size();
 	cudaMemcpyToSymbol(_n_buffers_unique, &n_buf_unique, sizeof(n_buffers));
+	n_elements_near_channels = (n_ions + n_buffers + n_buf_unique) * n_channels * n_threads;
+	currents.resize(n_channels* n_ions* n_threads);
+	ions_near_channels.resize(n_elements_near_channels);
 	n_blocks_init = (n_elements + threads_per_block - 1) / threads_per_block;
 	int n_ions_and_buffers = idx_buf + n_ions;
 	cudaMemcpyToSymbol(_n_ions_buffers, &n_ions_and_buffers, sizeof(n_ions_and_buffers));
 	cudaMalloc(&d_gradients_x, (idx_buf + n_ions) * n_threads * sizeof(double));
 	cudaMalloc(&d_gradients_y, (idx_buf + n_ions) * n_threads * sizeof(double));
 	cudaMalloc(&d_gradients, (idx_buf + n_ions) * n_threads * sizeof(double));
+	gradients = new double[(idx_buf + n_ions) * n_threads];
 	cudaMalloc(&d_ions, n_elements * n_ions * sizeof(double));
 	cudaMalloc(&d_ions_f, n_elements * n_ions * sizeof(float));
 	cudaMalloc(&evo_ions_diffusion, n_elements * n_ions * sizeof(float));
@@ -725,11 +705,18 @@ void DyadRDMP::_ZeroCurrents() {
 
 void DyadRDMP::_SetupUpdateGraph() {
 	cudaStreamBeginCapture(stream_dyad_mp, cudaStreamCaptureModeGlobal);
+	if (is_cytosol_cpu) {
+		cudaMemcpyAsync(d_ions_from_cytosol, ions_from_cytosol, n_ions * n_threads * sizeof(double), cudaMemcpyHostToDevice, stream_dyad_mp);
+		cudaMemcpyAsync(d_buffers_from_cytosol, buffers_from_cytosol, idx_buf * n_threads * sizeof(double), cudaMemcpyHostToDevice, stream_dyad_mp);
+	}
+	get_ions_near_channelsMP << <n_threads, n_channels, 0, stream_dyad_mp >> > (d_ions, d_buffers, d_buffers_free, d_ions_near_channels, x_idx, y_idx, z_idx);
+	cudaMemcpyAsync(ions_near_channels.data(), d_ions_near_channels, n_elements_near_channels * sizeof(double), cudaMemcpyDeviceToHost, stream_dyad_mp);
+	set_boundariesMP << <grid, block, 0, stream_dyad_mp >> > (d_ions_f, d_buffers_f, d_ions, d_buffers, d_ions_from_cytosol, d_buffers_from_cytosol);
 	gradient_xMP << <n_threads, n_threads_grad_x, n_threads_grad_x* (idx_buf + n_ions) * sizeof(double), stream_dyad_mp >> > (d_ions, d_buffers, d_buffer_binds_ion, d_gradients_x, d_D_ions, d_D_buf,d_mult_z);
 	gradient_yMP << <n_threads, n_threads_grad_y, n_threads_grad_y* (idx_buf + n_ions) * sizeof(double), stream_dyad_mp >> > (d_ions, d_buffers, d_buffer_binds_ion, d_gradients_y, d_D_ions, d_D_buf,d_mult_z);
 	gradient_sumMP << <1, n_threads* (idx_buf + n_ions), 0, stream_dyad_mp >> > (d_gradients_x, d_gradients_y, d_gradients);
-	get_ions_near_channelsMP << <n_threads, n_channels, 0, stream_dyad_mp >> > (d_ions, d_ions_near_channels, x_idx, y_idx, z_idx);
-	cudaMemcpyAsync(ions_near_channels.data(), d_ions_near_channels, n_elements_near_channels * sizeof(double), cudaMemcpyDeviceToHost, stream_dyad_mp);
+	if (is_cytosol_cpu)
+		cudaMemcpyAsync(gradients, d_gradients, (idx_buf + n_ions) * n_threads * sizeof(double), cudaMemcpyDeviceToHost, stream_dyad_mp);
 	cudaStreamEndCapture(stream_dyad_mp, &update_graph_mp);
 	cudaGraphInstantiate(&update_instance_mp, update_graph_mp, NULL, NULL, 0);
 }
@@ -793,8 +780,11 @@ bool DyadRDMP::UsesGPU() {
 	return true;
 }
 
-int DyadRDMP::GetNIons() {
-	return n_ions;
+std::vector<std::string> DyadRDMP::GetListofIons() {
+	std::vector<std::string> out;
+	for (auto& ion : ions)
+		out.push_back(ion->name);
+	return out;
 }
 
 std::vector<double> DyadRDMP::GetTotalSRCurrent() {
@@ -806,6 +796,7 @@ void DyadRDMP::InitOpening(int thread, int channel) {
 }
 
 void DyadRDMP::_SetCurrents(const std::vector<double>& ions_jsr, const std::vector<double>& ions_extracell) {
+	jsr_ions = &ions_jsr;
 	int idx, idx_jsr, idx_extra;
 	for (int i = 0; i < n_threads; ++i) {
 		total_sr_current[i] = 0;
@@ -830,17 +821,30 @@ void DyadRDMP::_SetCurrents(const std::vector<double>& ions_jsr, const std::vect
 }
 
 void DyadRDMP::GetEffluxes(double*& currents_out) {
+	if (is_cytosol_cpu) {
+		cudaDeviceSynchronize();
+		currents_out = gradients;
+		return;
+	}
 	currents_out = d_gradients;
 }
 
-void DyadRDMP::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& jsr_ions, const std::vector<double>& extracellular_ions) {
+void DyadRDMP::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& jsr_ions, const std::vector<double>& extracellular_ions, double& Vcyt) {
+	V = Vcyt;
 	if (ions_from_cytosol != ions_cytosol || buffers_from_cytosol != buffers_cytosol) {
 		ions_from_cytosol = ions_cytosol;
 		buffers_from_cytosol = buffers_cytosol;
+		if (is_cytosol_cpu) {
+			cudaMalloc(&d_ions_from_cytosol, n_ions * n_threads * sizeof(double));
+			cudaMalloc(&d_buffers_from_cytosol, idx_buf * n_threads * sizeof(double));
+		}
+		else {
+			d_ions_from_cytosol = ions_cytosol;
+			d_buffers_from_cytosol = buffers_cytosol;
+		}
 		_SetupStepGraph();
 		_SetupUpdateGraph();
 	}
-	set_boundariesMP << <grid, block, 0, stream_dyad_mp >> > (d_ions_f, d_buffers_f, d_ions, d_buffers, ions_from_cytosol, buffers_from_cytosol);
 	cudaGraphLaunch(update_instance_mp, stream_dyad_mp);
 	_SetCurrents(jsr_ions, extracellular_ions);
 }
@@ -856,7 +860,7 @@ void DyadRDMP::RunRD(double dt, int idx_b) {
 }
 
 void DyadRDMP::RunMC(double dt, int n_thread) {
-	channels->RunMC(dt, n_thread, ions_near_channels);
+	channels->RunMC(dt, n_thread, ions_near_channels, *jsr_ions, V);
 }
 
 double DyadRDMP::GetL() {
@@ -913,18 +917,8 @@ std::map <std::string, std::vector<double> > DyadRDMP::GetIonsNearChannels(std::
 	return out;
 }
 
-std::vector<uint64_t> DyadRDMP::GetDimensions() {
-	return dyad_dims;
-}
-
-std::vector<uint64_t> DyadRDMP::GetChannelsDimensions() {
-	return channels_dims;
-}
-std::vector<uint64_t> DyadRDMP::GetIonsNearChannelsDimensions() {
-	return channels_ions_dims;
-}
-
 DyadRDMP::~DyadRDMP() {
+	delete[] gradients;
 	cudaFree(d_mult_z);
 	cudaFree(&d_init_ions);
 	cudaFree(&d_ions);
@@ -944,6 +938,10 @@ DyadRDMP::~DyadRDMP() {
 	cudaFree(&d_gradients_x);
 	cudaFree(&d_gradients_y);
 	cudaFree(&d_gradients);
+	if (is_cytosol_cpu) {
+		cudaFree(&d_ions_from_cytosol);
+		cudaFree(&d_buffers_from_cytosol);
+	}
 	cudaFree(&d_buffers_gradients);
 	cudaFree(&d_buffers_new);
 	cudaFree(&d_buffer_binds_ion);

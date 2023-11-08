@@ -140,9 +140,9 @@ void SingleSiteMWC::SetRow(int i,double ca, int j,double mg) {
 	Q[idx_c + 30][idx_c + 15] = koc * std::pow(fIco, 1 - alphakcoI);
 }
 
-void SingleSiteMWC::RebuildQMatrixofSingleState(std::vector<double>& ions) {
-	double ca = ions[0];
-	double mg = ions[1];
+void SingleSiteMWC::RebuildQMatrixofSingleState(const std::unordered_map<std::string, double>& ions) {
+	double ca = ions.at("Calcium");
+	double mg = ions.at("Magnesium");
 	int this_state = cur_state % 15;
 	for (int j = 0; j <= 4; ++j) {
 		if (this_state - (5 - j) < 0) {
@@ -158,9 +158,9 @@ void SingleSiteMWC::RebuildQMatrixofSingleState(std::vector<double>& ions) {
 	}
 }
 
-void SingleSiteMWC::RebuildQMatrix(std::vector<double>& ions) {
-	double ca = ions[0];
-	double mg = ions[1];
+void SingleSiteMWC::RebuildQMatrix(const std::unordered_map<std::string, double>& ions) {
+	double ca = ions.at("Calcium");
+	double mg = ions.at("Magnesium");
 	for (int i = 0; i < 5; ++i) {
 		for (int j = 0; j < 5 - i; ++j) {
 			SetRow(i, ca, j, mg);

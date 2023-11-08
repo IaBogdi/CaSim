@@ -93,7 +93,7 @@ __global__ void set_currentsMP2D(float* current_grid, float* current_values) {
 		current_grid[idx_grid + j * _n_elements] = current_values[idx + j * n_total_channels];
 }
 
-__global__ void get_ions_near_channelsMP2D(double* ions, double* buffers, double* ions_near_channels) {
+__global__ void get_ions_near_channelsMP2D(double* ions, double* buffers, float* buf_free, double* ions_near_channels) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int n_total_channels = _n_threads * _n_channels;
 	int idx_grid = IndexMP2D(_channel_x[threadIdx.x], _channel_y[threadIdx.x], blockIdx.x);
@@ -103,6 +103,9 @@ __global__ void get_ions_near_channelsMP2D(double* ions, double* buffers, double
 	for (int j = 0; j < _n_buffers; ++j) {
 		ions_near_channels[idx + (j + _n_ions) * n_total_channels] = buffers[idx_grid + j * _n_elements];
 	}
+	for (int j = 0; j < _n_buffers_unique; ++j) {
+		ions_near_channels[idx + (_n_buffers + _n_ions + j) * n_total_channels] = buf_free[idx_grid + j * _n_elements];
+	}
 }
 
 __device__ __forceinline__ void loadSharedData(float* source, float* sharedDest, int sourceIndex, int sharedIndex, int length) {
@@ -110,7 +113,6 @@ __device__ __forceinline__ void loadSharedData(float* source, float* sharedDest,
 		sharedDest[sharedIndex + i * (blockDim.x + 2) * (blockDim.y + 2) * blockDim.z] = source[sourceIndex + i * _n_elements];
 	}
 }
-
 
 __global__ void evolution_operator2DDyad(float* ions, float* buffers, float* evo_ions, float* evo_buffers, float* buf_free, float* currents) {
 	int idx = threadIdx.x + blockDim.x * blockIdx.x;
@@ -444,6 +446,7 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	blocky = j["CUDA"]["BLOCK Y"];
 	blockz = j["CUDA"]["BLOCK Z"];
 	R = j["Radius"];
+	V = j["Voltage"];
 	block.x = blockx, block.y = blocky, block.z = blockz;
 	n_threads = nthreads;
 	cudaStreamCreate(&(stream_dyad_mp2d));
@@ -528,7 +531,6 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 			}
 		}
 	}
-	//loop ions and buffers so that the GPU computation would go smoothly
 	idx_buf = 0;
 	for (auto const& i : ions)
 		for (auto const& b : buffers) {
@@ -545,7 +547,7 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 			else
 				buffer_binds_ion.push_back(0);
 		}
-	channels = std::make_unique<DyadChannels>(j, j_jsr, nthreads, buf_init);
+	channels = std::make_unique<DyadChannels>(j, j_jsr, nthreads, ions, buffers, V);
 	//Channels
 	sl_size = channels->GetNSLIonChannels();
 	sr_size = channels->GetNSRIonChannels();
@@ -564,7 +566,8 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	}
 	cudaMemcpyToSymbol(_n_channels, &n_channels, sizeof(n_channels));
 	n_buffers = idx_buf;
-	n_elements_near_channels = (n_ions + n_buffers) * n_channels * n_threads;
+	int n_buf_unique = buffers.size();
+	n_elements_near_channels = (n_ions + n_buffers + n_buf_unique) * n_channels * n_threads;
 	currents.resize(n_channels * n_ions * n_threads);
 	channels_ions_dims.resize(3);
 	channels_ions_dims[1] = n_threads;
@@ -604,7 +607,6 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	grad_mult = 3.0f / (4.0 * acos(-1) * R * R * R); /// (0.566233 * R * R * R); //
 	cudaMemcpyToSymbol(_grad_mult, &grad_mult, sizeof(grad_mult));
 	cudaMemcpyToSymbol(_n_buffers, &n_buffers, sizeof(n_buffers));
-	int n_buf_unique = buffers.size();
 	cudaMemcpyToSymbol(_n_buffers_unique, &n_buf_unique, sizeof(n_buffers));
 	n_blocks_init = (n_elements + threads_per_block - 1) / threads_per_block;
 	int n_ions_and_buffers = idx_buf + n_ions;
@@ -616,7 +618,7 @@ DyadRDMP2D::DyadRDMP2D(nlohmann::json& j, nlohmann::json& j_jsr, int nthreads) {
 	cudaMalloc(&d_ions, n_elements * n_ions * sizeof(double));
 	cudaMalloc(&d_ions_f, n_elements * n_ions * sizeof(float));
 	cudaMalloc(&evo_ions_total, n_elements * n_ions * sizeof(float));
-	cudaMalloc(&evo_buffers_total, n_elements * idx_buf * sizeof(float));
+	cudaMalloc(&evo_buffers_total, n_elements * idx_buf * sizeof(float)); 
 	cudaMalloc(&d_ions_near_channels, n_elements_near_channels * sizeof(double));
 	std::vector<float> ions_b;
 	for (auto const& i : ions)
@@ -654,7 +656,7 @@ void DyadRDMP2D::_SetupUpdateGraph() {
 		cudaMemcpyAsync(d_ions_from_cytosol, ions_from_cytosol, n_ions * n_threads * sizeof(double), cudaMemcpyHostToDevice, stream_dyad_mp2d);
 		cudaMemcpyAsync(d_buffers_from_cytosol, buffers_from_cytosol, idx_buf * n_threads * sizeof(double), cudaMemcpyHostToDevice, stream_dyad_mp2d);
 	}
-	get_ions_near_channelsMP2D << <n_threads, n_channels, 0, stream_dyad_mp2d >> > (d_ions, d_buffers, d_ions_near_channels);
+	get_ions_near_channelsMP2D << <n_threads, n_channels, 0, stream_dyad_mp2d >> > (d_ions, d_buffers, d_buffers_free, d_ions_near_channels);
 	cudaMemcpyAsync(ions_near_channels.data(), d_ions_near_channels, n_elements_near_channels * sizeof(double), cudaMemcpyDeviceToHost, stream_dyad_mp2d);
 	set_boundariesMP2D << <grid, block, 0, stream_dyad_mp2d >> > (d_ions_f, d_buffers_f, d_ions, d_buffers, d_ions_from_cytosol, d_buffers_from_cytosol);
 	gradient_xMP2D << <n_threads, n_threads_grad_x, n_threads_grad_x* (idx_buf + n_ions) * sizeof(double), stream_dyad_mp2d >> > (d_ions, d_buffers, d_gradients_x);
@@ -769,7 +771,8 @@ void DyadRDMP2D::GetEffluxes(double*& currents_out) {
 	currents_out = d_gradients;
 }
 
-void DyadRDMP2D::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& ions_jsr, const std::vector<double>& extracellular_ions) {
+void DyadRDMP2D::Update(double*& ions_cytosol, double*& buffers_cytosol, const std::vector<double>& ions_jsr, const std::vector<double>& extracellular_ions, double &Vcyt) {
+	V = Vcyt;
 	if (ions_from_cytosol != ions_cytosol || buffers_from_cytosol != buffers_cytosol) {
 		ions_from_cytosol = ions_cytosol;
 		buffers_from_cytosol = buffers_cytosol;
@@ -800,11 +803,18 @@ void DyadRDMP2D::RunRD(double dt, int idx_b) {
 }
 
 void DyadRDMP2D::RunMC(double dt, int n_thread) {
-	channels->RunMC(dt, n_thread, ions_near_channels,*jsr_ions);
+	channels->RunMC(dt, n_thread, ions_near_channels,*jsr_ions,V);
 }
 
 double DyadRDMP2D::GetL() {
 	return R;
+}
+
+std::vector<std::string> DyadRDMP2D::GetListofIons() {
+	std::vector<std::string> out;
+	for (auto &ion : ions)
+		out.push_back(ion->name);
+	return out;
 }
 
 std::map < std::string, std::vector<double> > DyadRDMP2D::GetConcentrations(std::vector<std::string>& values) {
@@ -873,17 +883,6 @@ std::map <std::string, std::vector<double> > DyadRDMP2D::GetIonsNearChannels(std
 	}
 	cudaDeviceSynchronize();
 	return out;
-}
-
-std::vector<uint64_t> DyadRDMP2D::GetDimensions() {
-	return dyad_dims;
-}
-
-std::vector<uint64_t> DyadRDMP2D::GetChannelsDimensions() {
-	return channels_dims;
-}
-std::vector<uint64_t> DyadRDMP2D::GetIonsNearChannelsDimensions() {
-	return channels_ions_dims;
 }
 
 DyadRDMP2D::~DyadRDMP2D() {

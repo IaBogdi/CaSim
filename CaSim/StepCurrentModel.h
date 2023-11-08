@@ -6,10 +6,10 @@ class StepCurrentModel : public KineticModel
 public:
 	StepCurrentModel(double);
 	StepCurrentModel();
-	double GetRate(std::vector<double>&);
+	double GetRate(const std::unordered_map<std::string, double>&);
 	bool isOpen();
 	void MakeTransition(double);
-	void SetMacroState(int, double, std::vector<double>&);
+	void SetMacroState(int, double, const std::unordered_map<std::string, double>&);
 	int GetMacroState();
 	int GetMacroState(int);
 	int GetNStates();

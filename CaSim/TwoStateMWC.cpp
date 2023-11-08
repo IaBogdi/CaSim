@@ -12,10 +12,10 @@ TwoStateMWC::TwoStateMWC(std::map<std::string, double>& params) {
 	cur_state = 0;
 }
 
-double TwoStateMWC::Po(std::vector<double>& ions)
+double TwoStateMWC::Po(const std::unordered_map<std::string, double>& ions)
 {
-	double Ca = ions[0];
-	double Mg = ions[1];
+	double Ca = ions.at("Calcium");
+	double Mg = ions.at("Magnesium");
 	double inac = KMgI * KMgI / (KMgI * KMgI + Mg * Mg);
 	double open = std::pow(Ca + KCa*fCa * (1 + Mg/(fMg*KMg)), 4);
 	double close = KO0*std::pow(fCa * (Ca + KCa * (1 + Mg / KMg)), 4);
