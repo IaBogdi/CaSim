@@ -17,8 +17,11 @@
 #include "DyadRD2DwCytosol.h"
 #include "DyadRD.h"
 */
+#ifdef CUDA_IS_AVAILABLE
 #include "DyadRDMP.h"
 #include "DyadRDMP2D.h"
+#endif // !CUDA_IS_AVAILABLE
+
 #include "DyadRD2DCPU.h"
 #include "DyadRDCPU.h"
 /*

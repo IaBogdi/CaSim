@@ -1,6 +1,10 @@
 #include "ParallelHybridSolver.h"
 
+#ifdef CUDA_IS_AVAILABLE
 #include <cuda_runtime_api.h> // CudaDeviceSynchronize
+
+#endif // CUDA_IS_AVAILABLE
+
 
 #include <iostream>
 
@@ -59,14 +63,23 @@ ParallelHybridSolver::ParallelHybridSolver(json& file) {
 		return std::make_unique<DyadRD>(file["Dyad"], n_thr);
 	};
 	*/
+#ifdef CUDA_IS_AVAILABLE
 	dyad_type["3D"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRDMP>(file["Dyad"], file["jSR"], n_thr);
+};
+	dyad_type["2D"] = [](json& file, int n_thr) {
+		return std::make_unique<DyadRDMP2D>(file["Dyad"], file["jSR"], n_thr);
 	};
-	dyad_type["CPU3D"] = [](json& file, int n_thr) {
+#else
+	dyad_type["3D"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRDCPU>(file["Dyad"], file["jSR"], n_thr);
 	};
 	dyad_type["2D"] = [](json& file, int n_thr) {
-		return std::make_unique<DyadRDMP2D>(file["Dyad"], file["jSR"], n_thr);
+		return std::make_unique<DyadRD2DCPU>(file["Dyad"], file["jSR"], n_thr);
+	};
+#endif // CUDA_IS_AVAILABLE
+	dyad_type["CPU3D"] = [](json& file, int n_thr) {
+		return std::make_unique<DyadRDCPU>(file["Dyad"], file["jSR"], n_thr);
 	};
 	dyad_type["CPU2D"] = [](json& file, int n_thr) {
 		return std::make_unique<DyadRD2DCPU>(file["Dyad"], file["jSR"], n_thr);
@@ -132,7 +145,9 @@ void ParallelHybridSolver::RunSimulations(long long n_scenarios) {
 }
 
 void ParallelHybridSolver::ResetSystem() {
+#ifdef CUDA_IS_AVAILABLE
 	cudaDeviceSynchronize();
+#endif // CUDA_IS_AVAILABLE	
 	nsr->Reset();
 	sr->Reset();
 	dyad->Reset();
@@ -143,12 +158,16 @@ void ParallelHybridSolver::Update() {
 	double* d_ions_cytosol = nullptr;
 	double* d_buffers_cytosol = nullptr;
 	double* d_currents = nullptr;
+#ifdef CUDA_IS_AVAILABLE
 	cudaDeviceSynchronize();
+#endif // CUDA_IS_AVAILABLE	
 	cytosol->GetIonsBuffersandV(d_ions_cytosol, d_buffers_cytosol,V);
 	dyad->Update(d_ions_cytosol, d_buffers_cytosol, sr->GetIons(), cytosol->GetExtraCellularIons(),V);
 	dyad->GetEffluxes(d_currents);
 	cytosol->Update(d_currents, nsr->GetIons());
+#ifdef CUDA_IS_AVAILABLE
 	cudaDeviceSynchronize();
+#endif // CUDA_IS_AVAILABLE	
 	sr->Update(dyad->GetTotalSRCurrent(), nsr->GetIons());
 	nsr->Update(d_ions_cytosol, sr->GetIons());
 }
