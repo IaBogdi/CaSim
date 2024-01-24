@@ -2,6 +2,7 @@
 #include "Point.h"
 #include "TwoStateMWC.h"
 #include "SingleSiteMWC.h"
+#include "TwoStateaHTG.h"
 
 #include <fstream>
 #include <iostream>
@@ -30,6 +31,8 @@ QuasyStationaryReleaseSite::QuasyStationaryReleaseSite(nlohmann::json& file) {
 			channels.push_back(std::make_shared<TwoStateMWC>(pars_channel));
 		if (file["Calcium Release Site"]["Parameters"]["Channels"][channel_name]["Model"] == "SingleSiteMWC")
 			channels.push_back(std::make_shared<SingleSiteMWC>(pars_channel));
+		if (file["Calcium Release Site"]["Parameters"]["Channels"][channel_name]["Model"] == "TwoStateaHTG")
+			channels.push_back(std::make_shared<TwoStateaHTG>(pars_channel));
 	}
 	in.close();
 	//add other ions

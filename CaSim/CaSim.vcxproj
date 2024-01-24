@@ -97,7 +97,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.props" Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -304,7 +304,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files\HDF_Group\HDF5\1.14.0\lib;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>hdf5.lib;hdf5_cpp.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+      <AdditionalDependencies>hdf5.lib;hdf5_cpp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <CodeGeneration>compute_75,sm_75</CodeGeneration>
@@ -320,6 +320,7 @@
     <ClCompile Include="DyadRDCPU.cpp" />
     <ClCompile Include="IndChannelCREAnalyzer.cpp" />
     <ClCompile Include="IonChannel.cpp" />
+    <ClCompile Include="TwoStateaHTG.cpp" />
     <ClCompile Include="TwoStateSplineModel.cpp" />
     <ClCompile Include="NSRConstPool.cpp" />
     <ClCompile Include="NSRSeries.cpp" />
@@ -365,6 +366,7 @@
     <ClInclude Include="EmptyCytosol.h" />
     <ClInclude Include="IndChannelCREAnalyzer.h" />
     <ClInclude Include="IonChannel.h" />
+    <ClInclude Include="TwoStateaHTG.h" />
     <ClInclude Include="TwoStateSplineModel.h" />
     <ClInclude Include="NSRConstPool.h" />
     <ClInclude Include="NSRSeries.h" />
@@ -404,6 +406,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.targets" Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'" />
   </ImportGroup>
 </Project>

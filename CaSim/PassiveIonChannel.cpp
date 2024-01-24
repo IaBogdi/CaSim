@@ -4,6 +4,7 @@
 #include "SingleSiteMWCwCaL.h"
 #include "SheepCannell.h"
 #include "TwoStateSplineModel.h"
+#include "TwoStateaHTG.h"
 #include <map>
 
 PassiveIonChannel::PassiveIonChannel(std::string model_name, std::vector<double>& coords, std::map<std::string, double>& params, std::vector<double>& G,
@@ -19,6 +20,8 @@ PassiveIonChannel::PassiveIonChannel(std::string model_name, std::vector<double>
 		model = std::make_unique<SheepCannell>(params);
 	if (model_name == "TwoStateSpline")
 		model = std::make_unique<TwoStateSplineModel>(sopen, sclose);
+	if (model_name == "TwoStateaHTG")
+		model = std::make_unique<TwoStateaHTG>(params);
 	coordinates = std::make_unique<Point>(coords);
 }
 
