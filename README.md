@@ -17,3 +17,7 @@ This software computes the reaction-diffusion and constructed so that it is poss
 ## Installation
 
 The software was built on Visual Studio 2022. Run the solution file (CaSim.sln)
+
+## Authors
+
+Bogdan Iaparov, and Alexandra Zahradníková, Department of Cellular Cardiology, Institute of Experimental Endocrinology, Biomedical Research Center of the Slovak Academy of Sciences.
