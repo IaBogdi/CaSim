@@ -134,7 +134,8 @@
         "dz": 5,
         "x": 300,
         "y": 400,
-        "z": 15
+        "z": 15,
+		"Voltage": 0
     },
     "Iterations for Cytosol": 5000,
     "Iterations for Dyad": 5000,

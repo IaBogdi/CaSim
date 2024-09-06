@@ -114,6 +114,9 @@
     <ClCompile Include="DyadRDCPU.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="TwoStateaHTG.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ParallelSolver.h">
@@ -231,6 +234,9 @@
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="DyadRDMP.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="TwoStateaHTG.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

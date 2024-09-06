@@ -27,7 +27,7 @@
         "dr": 10,
         "r": 10000
     },
-    "Description": "Parallel CPU+GPU computations using two-state model with rates described by spline constructed from Iaparov et al. 2022 data at stronger Mg2+ binding parameters",
+    "Description": "Test parallel CPU computations using Cannell et al. 2013 sheep model",
     "Dyad": {
         "Buffers": {
             "ATP": {
@@ -77,11 +77,15 @@
                     "Calcium": 1366.8,
                     "Magnesium": 0
                 },
-                "Coordinates": "Jayasinghe.txt",
-                "Kclose filename": "kclose_data_v2.txt",
-                "Kopen filename": "kopen_data_v2.txt",
-                "Model": "TwoStateSpline",
-                "Parameters": {}
+                "Coordinates": "test_input/Jayasinghe.txt",
+                "Model": "SheepCannell",
+                "Parameters": {
+					          "kclose0": 245,
+                    "kopen0": 457000.0,
+                    "kopenmax": 800,
+                    "ncaclose": -0.27,
+                    "ncaopen": 2.12
+                }
             }
         },
         "Ions": {
@@ -92,7 +96,7 @@
             },
             "Magnesium": {
                 "Concentration": 1000,
-                "D": 160000.0,
+                "D": 150000.0,
                 "Extracell": 1000
             }
         },
@@ -106,7 +110,7 @@
             }
         },
         "Start": "Equilibrium",
-        "Type": "2D",
+        "Type": "CPU2D",
         "dx": 10,
         "dy": 10,
         "dz": 5,
@@ -115,16 +119,16 @@
         "z": 15,
 		"Voltage": 0
     },
-    "Iterations for Cytosol": 5000,
-    "Iterations for Dyad": 5000,
+    "Iterations for Cytosol": 500,
+    "Iterations for Dyad": 500,
     "Iterations for IonChannels": 500,
     "Iterations for IonsNearChannels": 500,
     "Iterations for SR": 500,
-    "Max Time, ms": 100,
-    "Name": "SplineCREFinv2",
-    "NumCores": 25,
-    "NumScenarios": 200,
-    "NumBatch": 100,
+    "Max Time, ms": 1,
+    "Name": "Test Sim",
+    "NumCores": -1,
+    "NumScenarios": 1,
+    "NumBatch": 1,
     "Outputs": [
         "Calcium",
         "Magnesium",
@@ -135,7 +139,7 @@
         "RyR"
     ],
     "Solver": "ParallelHybridSolver",
-    "Time output": 100000,
+    "Time output": 10000,
     "WriteData": 1,
     "dt, ns": 50,
     "jSR": {

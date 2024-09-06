@@ -44,7 +44,7 @@ void DyadChannels::_Initialize(nlohmann::json& j, int nthreads) {
 			std::vector<double> coords(3);
 			while (in >> X >> Y) {
 				coords[0] = X, coords[1] = Y;
-				coords[2] = el.value()["SLChannel"] ? double(j["z"]) : 0;
+				coords[2] = 0;
 				for (int i = 0; i < nthreads; ++i) {
 					if (el.value()["Model"].get<std::string>().compare("StepResponse") == 0) {
 						SRChannels[i].push_back(std::make_unique<StepCurrentIonChannel>(coords, el.value()["Parameters"]["Time"], g));

@@ -18,6 +18,8 @@ ParallelHybridSolver::ParallelHybridSolver(json& file) {
 	n_iter = time_max / dt;
 	n_threads = file["NumBatch"];
 	n_cores = file["NumCores"];
+	if (n_cores < 0)
+		n_cores = omp_get_max_threads();
 	omp_set_num_threads(n_cores);
 	ca_nsr.resize(n_threads);
 	ca_jsr.resize(n_threads);
